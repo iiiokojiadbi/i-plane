@@ -19,7 +19,7 @@ import {
   findIssues,
   formatDetail,
   formatFound,
-  formatRows,
+  formatListing,
   listIssues,
   showIssue,
   updateIssue,
@@ -125,7 +125,7 @@ const main = async (): Promise<void> => {
       printValue(await listProjects(client), json, formatProjects);
       return;
     case "list":
-      printValue(await listIssues(client, args), json, formatRows);
+      printValue(await listIssues(client, args), json, formatListing);
       return;
     case "show":
       printValue(

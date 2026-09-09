@@ -10,6 +10,7 @@ import { flagBool, flagNumber, flagValue, type ParsedArgs, UsageError } from "..
 import type { PlaneClient } from "../client.ts";
 import { oneLine, printColumns, truncate } from "../output.ts";
 import { findState, listStates, resolveIssue, resolveProject } from "../resolve.ts";
+import { htmlToMarkdown, markdownToHtml } from "../richtext.ts";
 import type { Issue, State } from "../types.ts";
 import { priorityRank, stateGroupRank } from "../types.ts";
 
@@ -50,21 +51,33 @@ const toRow = (issue: Expanded, identifier: string): Row => {
 const priorityTag = (priority: string): string =>
   priority === "none" || priority === "" ? "" : ` [${priority}]`;
 
-export const formatRows = (rows: ReadonlyArray<Row>): string => {
+export const formatListing = (listing: Listing): string => {
+  const { rows, total } = listing;
   if (rows.length === 0) return "no work items";
-  return printColumns(
-    rows.map((row) => ({
-      name: row.ref,
-      text: `${truncate(row.name, 72)}${priorityTag(row.priority)} (${row.state})`,
-    })),
-    "",
-  ).join("\n");
+  const lines = [
+    ...printColumns(
+      rows.map((row) => ({
+        name: row.ref,
+        text: `${truncate(row.name, 72)}${priorityTag(row.priority)} (${row.state})`,
+      })),
+      "",
+    ),
+  ];
+  // Saying so out loud matters: a truncated list looks exactly like a complete
+  // one, and acting on a partial picture is worse than making a second call.
+  if (rows.length < total) {
+    lines.push("", `showing ${rows.length} of ${total} — drop --limit to see the rest`);
+  }
+  return lines.join("\n");
 };
 
-export const listIssues = async (
-  client: PlaneClient,
-  args: ParsedArgs,
-): Promise<ReadonlyArray<Row>> => {
+export interface Listing {
+  readonly rows: ReadonlyArray<Row>;
+  /** How many matched before --limit cut the list. */
+  readonly total: number;
+}
+
+export const listIssues = async (client: PlaneClient, args: ParsedArgs): Promise<Listing> => {
   const projectRef = args.positionals[0] ?? flagValue(args, "project");
   if (projectRef === undefined) {
     throw new UsageError("Which project? Pass it as an argument: i-plane ls CLOUD");
@@ -74,12 +87,9 @@ export const listIssues = async (
   // Only fields and expand are honoured by this endpoint. state_group, priority
   // and order_by are accepted with 200 and then ignored — the answer comes back
   // whole either way. So narrowing happens here, on rows already made small.
+  const limit = flagNumber(args, "limit");
   const issues = await client.listAll<Expanded>(`projects/${project.id}/issues/`, {
-    query: {
-      fields: LIST_FIELDS,
-      expand: "state",
-      per_page: flagNumber(args, "limit") ?? 100,
-    },
+    query: { fields: LIST_FIELDS, expand: "state", per_page: 100 },
   });
 
   const wantState = flagValue(args, "state")?.toLowerCase();
@@ -98,15 +108,22 @@ export const listIssues = async (
       return true;
     });
   // Open work first, then by priority: the order someone actually reads them in.
-  return [...rows].sort(
+  const sorted = [...rows].sort(
     (a, b) =>
       stateGroupRank(a.group) - stateGroupRank(b.group) ||
       priorityRank(a.priority) - priorityRank(b.priority) ||
       a.ref.localeCompare(b.ref),
   );
+  // Trimming happens after sorting: --limit should keep the rows that matter,
+  // not whichever ones the server happened to send first.
+  return {
+    rows: limit === undefined ? sorted : sorted.slice(0, limit),
+    total: sorted.length,
+  };
 };
 
 export interface Detail extends Row {
+  readonly description: string;
   readonly assignees: ReadonlyArray<string>;
   readonly target_date?: string | null;
   readonly parent?: string | null;
@@ -126,7 +143,7 @@ export const showIssue = async (
     client,
     ref,
     flagValue(args, "project"),
-    "id,name,sequence_id,priority,state,assignees,target_date,parent,project",
+    "id,name,sequence_id,priority,state,assignees,target_date,parent,project,description_html",
   );
   const states = await listStates(client, projectId);
   const state = states.find((s) => s.id === issue.state);
@@ -139,6 +156,7 @@ export const showIssue = async (
     group: state?.group ?? "?",
     priority: issue.priority,
     id: issue.id,
+    description: htmlToMarkdown(issue.description_html),
     assignees: issue.assignees ?? [],
     target_date: issue.target_date ?? null,
     parent: issue.parent ?? null,
@@ -158,7 +176,10 @@ export const formatDetail = (detail: Detail): string => {
   }
   if (detail.parent != null) rows.push({ name: "parent", text: detail.parent });
   rows.push({ name: "url", text: detail.url });
-  return printColumns(rows, "").join("\n");
+  const head = printColumns(rows, "").join("\n");
+  // The description goes below the fields, as Markdown: code blocks and tables
+  // are why anyone opens a work item, and HTML is unreadable for both of us.
+  return detail.description === "" ? head : `${head}\n\n${detail.description}`;
 };
 
 export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promise<Row> => {
@@ -173,8 +194,9 @@ export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promis
 
   const body: Record<string, unknown> = { name: title };
   const description = flagValue(args, "description");
-  // Plane stores rich text; a plain sentence has to be wrapped to survive.
-  if (description !== undefined) body.description_html = `<p>${description}</p>`;
+  // Written as Markdown, stored as HTML: Plane keeps whatever markup it is given,
+  // so code blocks, tables and lists all survive the round trip.
+  if (description !== undefined) body.description_html = markdownToHtml(description);
   const priority = flagValue(args, "priority");
   if (priority !== undefined) body.priority = priority;
 
@@ -216,7 +238,7 @@ export const updateIssue = async (client: PlaneClient, args: ParsedArgs): Promis
   const name = flagValue(args, "name");
   if (name !== undefined) body.name = name;
   const description = flagValue(args, "description");
-  if (description !== undefined) body.description_html = `<p>${description}</p>`;
+  if (description !== undefined) body.description_html = markdownToHtml(description);
 
   if (Object.keys(body).length === 0) {
     throw new UsageError("Nothing to change. Pass --state, --priority, --name or --description.");
