@@ -14,7 +14,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,6 +46,14 @@ run("./node_modules/.bin/tsc", ["--noEmit"], { stdio: "inherit" });
 
 console.log("checking lint and format...");
 run("./node_modules/.bin/biome", ["check", "."], { stdio: "inherit" });
+
+/*
+ * dist is emptied first. Everything under it is eligible for packaging, so a
+ * file left from an experiment ships to the registry — where it stays, in every
+ * mirror, for as long as the version exists.
+ */
+console.log("clearing dist...");
+rmSync(join(root, "dist"), { recursive: true, force: true });
 
 console.log("building...");
 /*
@@ -93,15 +101,47 @@ console.log(`unpacked: ${((packed.unpackedSize ?? 0) / 1024).toFixed(0)} KB`);
 console.log(`tarball: ${((packed.size ?? 0) / 1024).toFixed(0)} KB`);
 
 /*
+ * Reporting the size is not the same as refusing a bad one. These bounds are the
+ * shape of this package — three files, tens of kilobytes — so anything outside
+ * them means something got in that nobody meant to publish.
+ */
+const EXPECTED_FILES = ["README.md", "dist/cli.js", "package.json"];
+const MAX_TARBALL_KB = 200;
+const shipped = (packed.files ?? []).map((file) => file.path).sort();
+const unexpected = shipped.filter((path) => !EXPECTED_FILES.includes(path));
+if (unexpected.length > 0) {
+  throw new Error(`the package would ship files nobody declared: ${unexpected.join(", ")}`);
+}
+for (const required of EXPECTED_FILES) {
+  if (!shipped.includes(required)) throw new Error(`${required} is missing from the package`);
+}
+if ((packed.size ?? 0) / 1024 > MAX_TARBALL_KB) {
+  throw new Error(
+    `tarball is ${((packed.size ?? 0) / 1024).toFixed(0)} KB, over the ${MAX_TARBALL_KB} KB bound`,
+  );
+}
+console.log(`contents and size are within bounds`);
+
+/*
  * A published version cannot be reused, so a collision has to stop the release
  * here rather than surface as a registry error the operator must interpret.
  */
 let published = "";
 try {
   published = run("npm", ["view", reference, "version"]).trim();
-} catch {
-  // `npm view` exits non-zero when the version does not exist, which is the
-  // outcome we want: nothing to do.
+} catch (cause) {
+  /*
+   * `npm view` exits non-zero both for "no such version" and for "the registry
+   * was unreachable". Treating every failure as the first one turns a network
+   * problem into permission to publish over an existing version.
+   */
+  const text = String((cause && cause.stderr) || cause?.message || "");
+  const missing = /E404|is not in this registry|404 Not Found/i.test(text);
+  if (!missing) {
+    throw new Error(
+      `could not ask the registry whether ${reference} exists, so publishing is unsafe:\n${text.trim()}`,
+    );
+  }
 }
 if (published !== "") {
   throw new Error(`${reference} is already in the registry; bump the version first`);

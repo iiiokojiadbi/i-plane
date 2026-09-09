@@ -53,7 +53,10 @@ const priorityTag = (priority: string): string =>
 
 export const formatListing = (listing: Listing): string => {
   const { rows, total } = listing;
-  if (rows.length === 0) return "no work items";
+  if (rows.length === 0) {
+    // "no work items" would be a lie when --limit hid all of them.
+    return total === 0 ? "no work items" : `showing 0 of ${total} — raise or drop --limit`;
+  }
   const lines = [
     ...printColumns(
       rows.map((row) => ({
@@ -210,10 +213,24 @@ export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promis
     method: "POST",
     body,
   });
-  const states = await listStates(client, project.id);
-  const created_state = states.find((s) => s.id === created.state);
+  const ref = `${project.identifier}-${created.sequence_id}`;
+
+  /*
+   * The work item exists from here on. Reading its state is a nicety, and a
+   * failure there must not be reported as a failure to create: a caller who
+   * retries on that error ends up with duplicates.
+   */
+  let created_state: State | undefined;
+  try {
+    const states = await listStates(client, project.id);
+    created_state = states.find((s) => s.id === created.state);
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    process.stderr.write(`${ref} was created; could not read its state: ${reason}\n`);
+  }
+
   return {
-    ref: `${project.identifier}-${created.sequence_id}`,
+    ref,
     name: oneLine(created.name),
     state: created_state?.name ?? "?",
     group: created_state?.group ?? "?",
@@ -294,7 +311,9 @@ export const commentIssue = async (client: PlaneClient, args: ParsedArgs): Promi
   const { issue, projectId } = await resolveIssue(client, ref, flagValue(args, "project"));
   await client.request(`projects/${projectId}/issues/${issue.id}/comments/`, {
     method: "POST",
-    body: { comment_html: `<p>${text}</p>` },
+    // Markdown, as the guide promises. Wrapping raw text in <p> passed literal
+    // markup straight through into stored HTML.
+    body: { comment_html: markdownToHtml(text) },
   });
   return `commented on ${ref}`;
 };

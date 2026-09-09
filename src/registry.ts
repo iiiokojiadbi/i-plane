@@ -308,3 +308,25 @@ export const ALL_COMMANDS: ReadonlyArray<Command> = GROUPS.flatMap((group) => gr
 
 export const findCommand = (name: string): Command | undefined =>
   ALL_COMMANDS.find((command) => command.name === name || command.alias === name);
+
+/** Flags every command accepts, whatever it is. */
+export const GLOBAL_FLAGS: ReadonlyArray<string> = [
+  "json",
+  "help",
+  "version",
+  "url",
+  "token",
+  "workspace",
+  "config",
+];
+
+/**
+ * Flags a command understands. A misspelled filter must fail rather than return
+ * an unfiltered list with exit 0: the caller cannot tell that answer apart from
+ * a correct one, and acting on it is worse than an error.
+ */
+export const knownFlags = (command: Command): ReadonlySet<string> =>
+  new Set([
+    ...GLOBAL_FLAGS,
+    ...(command.options ?? []).map((option) => option.flag.replace(/^--/, "")),
+  ]);

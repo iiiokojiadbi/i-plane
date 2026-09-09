@@ -9,6 +9,22 @@
 import type { Config } from "./config.ts";
 import { type FetchLike, proxyFetch } from "./http.ts";
 
+/*
+ * Anything on its way to a human or a log passes through here first. Node puts
+ * the offending header value into its own error text, and a server can reflect a
+ * token back in an error body — both bypassed the masking that only guarded
+ * `i-plane config`. A leak in an error message is still a leak.
+ */
+const redact = (text: string, secret: string): string => {
+  if (secret === "") return text;
+  let safe = text.split(secret).join("[token]");
+  // A token carrying a newline reaches Node's header validator in pieces.
+  for (const piece of secret.split(/\s+/)) {
+    if (piece.length >= 12) safe = safe.split(piece).join("[token]");
+  }
+  return safe;
+};
+
 export class PlaneError extends Error {
   readonly status: number | undefined;
 
@@ -66,7 +82,8 @@ export class PlaneClient {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    const limit = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const timeout = setTimeout(() => controller.abort(), limit);
 
     const send = await this.fetcher(url.toString());
 
@@ -88,21 +105,56 @@ export class PlaneClient {
           `No answer from ${this.config.url.value} within ${(options.timeoutMs ?? DEFAULT_TIMEOUT_MS) / 1000}s.`,
         );
       }
+      /*
+       * The cause carries the diagnosis — ENOTFOUND, ECONNREFUSED, a certificate
+       * problem — and "fetch failed" alone leaves the caller with nothing to act
+       * on. Both layers are reported, with the token stripped from each.
+       */
       const reason = cause instanceof Error ? cause.message : String(cause);
-      throw new PlaneError(`Cannot reach ${this.config.url.value}: ${reason}`);
+      const inner = cause instanceof Error ? (cause.cause as Error | undefined) : undefined;
+      const detail =
+        inner === undefined
+          ? reason
+          : `${reason} (${[inner.name, (inner as { code?: string }).code, inner.message]
+              .filter(Boolean)
+              .join(" ")})`;
+      throw new PlaneError(
+        redact(`Cannot reach ${this.config.url.value}: ${detail}`, this.config.token.value),
+      );
     } finally {
       clearTimeout(timeout);
     }
 
-    if (!response.ok) throw await this.describeFailure(response);
+    if (!response.ok) throw await this.describeFailure(response, controller);
 
     if (response.status === 204) return undefined as T;
-    const text = await response.text();
+    /*
+     * The deadline covers the body too. Clearing the timer once headers arrive
+     * left a stalled body waiting with no limit at all — the exact failure a
+     * timeout exists to catch.
+     */
+    const text = await this.readBody(response, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     if (text === "") return undefined as T;
     try {
       return JSON.parse(text) as T;
     } catch {
       throw new PlaneError(`Expected JSON from ${url.pathname}, got ${text.slice(0, 120)}`);
+    }
+  }
+
+  /** Reads a body under the same deadline as the request that produced it. */
+  private async readBody(response: Response, limitMs: number): Promise<string> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new PlaneError(`Response body stalled; gave up after ${limitMs / 1000}s.`)),
+        limitMs,
+      );
+    });
+    try {
+      return await Promise.race([response.text(), deadline]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
   }
 
@@ -115,17 +167,26 @@ export class PlaneClient {
         ...options,
         query: { ...options.query, ...(cursor === undefined ? {} : { cursor }) },
       });
-      // Some endpoints answer with a bare array rather than a page.
-      if (Array.isArray(page)) return page as ReadonlyArray<T>;
+      // Some endpoints answer with a bare array rather than a page. Returning it
+      // directly discarded pages already collected, so it is appended instead.
+      if (Array.isArray(page)) {
+        rows.push(...(page as ReadonlyArray<T>));
+        break;
+      }
       rows.push(...(page.results ?? []));
       cursor = page.next_page_results === true ? page.next_cursor : undefined;
     } while (cursor !== undefined);
     return rows;
   }
 
-  private async describeFailure(response: Response): Promise<PlaneError> {
+  private async describeFailure(
+    response: Response,
+    controller: AbortController,
+  ): Promise<PlaneError> {
+    void controller;
     const body = await response.text().catch(() => "");
-    const detail = body.slice(0, 300);
+    // A server can echo the key back inside an error body.
+    const detail = redact(body.slice(0, 300), this.config.token.value);
     switch (response.status) {
       case 401:
       case 403:

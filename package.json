@@ -28,10 +28,17 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
+    "@types/markdown-it": "14.2.0",
     "@types/node": "24.13.4",
+    "@types/turndown": "5.0.6",
     "typescript": "7.0.2"
   },
   "optionalDependencies": {
-    "undici": "^7.16.0"
+    "undici": "8.10.2"
+  },
+  "dependencies": {
+    "markdown-it": "15.0.1",
+    "turndown": "7.2.4",
+    "turndown-plugin-gfm": "1.0.2"
   }
 }

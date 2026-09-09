@@ -85,8 +85,28 @@ const pick = (
   return undefined;
 };
 
-/** Strips a trailing slash so path joining stays predictable. */
-const normalizeUrl = (raw: string): string => raw.replace(/\/+$/, "");
+/**
+ * Strips a trailing slash so path joining stays predictable, and rejects what is
+ * not a URL here rather than deep inside the client: a bad setting is a bad
+ * call (exit 2), not a server that refused us (exit 1).
+ */
+const normalizeUrl = (raw: string, origin: string, path: string): string => {
+  const trimmed = raw.replace(/\/+$/, "");
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new UsageError(
+      `The url is not a valid address: ${trimmed}\n` +
+        `  it came from ${origin === "file" ? path : origin}\n` +
+        "  expected something like https://plane.example.com",
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new UsageError(`The url must be http or https, got ${parsed.protocol} in ${trimmed}`);
+  }
+  return trimmed;
+};
 
 const missing = (what: string, envName: string, fileKey: string, path: string): UsageError =>
   new UsageError(
@@ -123,7 +143,7 @@ export const resolveConfig = (input: ConfigInput): Config => {
   }
 
   return {
-    url: { value: normalizeUrl(url.value), origin: url.origin },
+    url: { value: normalizeUrl(url.value, url.origin, configPath), origin: url.origin },
     token,
     workspace,
     configPath,

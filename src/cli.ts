@@ -42,7 +42,7 @@ import {
 import { resolveConfig } from "./config.ts";
 import { needsProxy, proxyFetch, reExecWithProxy } from "./http.ts";
 import { fail, printValue } from "./output.ts";
-import { findCommand } from "./registry.ts";
+import { findCommand, knownFlags } from "./registry.ts";
 import { listProjects } from "./resolve.ts";
 
 const VERSION = "1.0.0";
@@ -113,6 +113,21 @@ const main = async (): Promise<void> => {
   const raw = args.path[0];
   const command = raw === undefined ? undefined : (ALIASES[raw] ?? raw);
   current = command;
+
+  /*
+   * A flag this command does not know is a mistake, and a silent one: a
+   * misspelled --priority returned an unfiltered list with exit 0, which the
+   * caller cannot tell apart from a correct answer. Better to refuse.
+   */
+  const known = command === undefined ? undefined : findCommand(command);
+  if (known !== undefined) {
+    const allowed = knownFlags(known);
+    const unknown = [...args.flags.keys()].filter((flag) => !allowed.has(flag));
+    if (unknown.length > 0) {
+      const list = unknown.map((flag) => `--${flag}`).join(", ");
+      throw new UsageError(`${known.name} does not take ${list}. Its flags are listed below.`);
+    }
+  }
 
   // config comes after resolveConfig on purpose: its job is to explain what was
   // resolved, including a value that turned out to be wrong.

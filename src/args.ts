@@ -92,7 +92,19 @@ export const flagValue = (args: ParsedArgs, name: string): string | undefined =>
   return typeof value === "string" ? value : undefined;
 };
 
-export const flagBool = (args: ParsedArgs, name: string): boolean => args.flags.has(name);
+/*
+ * A switch given an explicit value means what the value says. Testing only for
+ * presence made `--yes=false` confirm an irreversible delete, which is the
+ * opposite of what the caller wrote.
+ */
+const FALSEY = new Set(["false", "no", "off", "0", ""]);
+
+export const flagBool = (args: ParsedArgs, name: string): boolean => {
+  const value = args.flags.get(name);
+  if (value === undefined) return false;
+  if (value === true) return true;
+  return !FALSEY.has(value.trim().toLowerCase());
+};
 
 export const flagNumber = (args: ParsedArgs, name: string): number | undefined => {
   const raw = flagValue(args, name);
