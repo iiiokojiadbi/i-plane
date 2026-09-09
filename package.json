@@ -16,7 +16,9 @@
     "i-plane": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "AGENTS.md",
+    "CLAUDE.md"
   ],
   "engines": {
     "node": ">=20"

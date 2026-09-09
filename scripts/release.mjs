@@ -112,7 +112,18 @@ console.log(`tarball: ${((packed.size ?? 0) / 1024).toFixed(0)} KB`);
  * shape of this package — three files, tens of kilobytes — so anything outside
  * them means something got in that nobody meant to publish.
  */
-const EXPECTED_FILES = ["README.md", "dist/cli.js", "package.json"];
+/*
+ * AGENTS.md ships with the package: an agent that installs this tool can read
+ * how it behaves without fetching the repository. CLAUDE.md is one line
+ * importing it, so whichever name a tool looks for resolves to the same text.
+ */
+const EXPECTED_FILES = [
+  "AGENTS.md",
+  "CLAUDE.md",
+  "README.md",
+  "dist/cli.js",
+  "package.json",
+];
 const MAX_TARBALL_KB = 200;
 const shipped = (packed.files ?? []).map((file) => file.path).sort();
 const unexpected = shipped.filter((path) => !EXPECTED_FILES.includes(path));
