@@ -7,6 +7,9 @@
     "types": ["node"],
     "noEmit": true,
     "verbatimModuleSyntax": true,
+    // Imports carry the .ts extension so Node can run the sources directly
+    // (node --experimental-strip-types) without a build step while debugging.
+    "allowImportingTsExtensions": true,
     "noUncheckedIndexedAccess": true,
     "erasableSyntaxOnly": true
   },
