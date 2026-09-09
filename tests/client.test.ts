@@ -53,7 +53,11 @@ describe("the token never reaches text", () => {
       () => client.request("projects/").catch((cause: unknown) => cause),
     );
     expect(error).toBeInstanceOf(PlaneError);
+    // The status pins this to the intended failure: a test accepting any error
+    // passed even when every request threw a connection failure instead.
+    expect((error as PlaneError).status).toBe(500);
     expect((error as PlaneError).message).not.toContain(TOKEN);
+    expect((error as PlaneError).message).toContain("[token]");
   });
 
   test("padding before the token cannot push it past truncation", async () => {
@@ -63,7 +67,9 @@ describe("the token never reaches text", () => {
       respond(`${"x".repeat(280)}${TOKEN}`, { status: 500 }),
       () => client.request("projects/").catch((cause: unknown) => cause),
     );
+    expect((error as PlaneError).status).toBe(500);
     expect((error as PlaneError).message).not.toContain(TOKEN.slice(0, 20));
+    expect((error as PlaneError).message).toContain("[token]");
   });
 
   test("a 200 that is not JSON does not quote the token back", async () => {
@@ -72,6 +78,7 @@ describe("the token never reaches text", () => {
       respond(`not json, token was ${TOKEN}`, { status: 200 }),
       () => client.request("projects/").catch((cause: unknown) => cause),
     );
+    expect((error as PlaneError).message).toContain("Expected JSON");
     expect((error as PlaneError).message).not.toContain(TOKEN);
   });
 
@@ -102,6 +109,10 @@ describe("deadlines", () => {
       client.request("projects/", { timeoutMs: 60 }).catch((cause: unknown) => cause),
     );
     expect(error).toBeInstanceOf(PlaneError);
+    // Names the timeout specifically: "any error" passed even when the request
+    // failed instantly for an unrelated reason.
+    expect((error as PlaneError).message).toMatch(/stalled|within/i);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(50);
     expect(Date.now() - started).toBeLessThan(2000);
   });
 
@@ -121,6 +132,13 @@ describe("deadlines", () => {
       client.request("projects/", { timeoutMs: 60 }).catch((cause: unknown) => cause),
     );
     expect(error).toBeInstanceOf(PlaneError);
+    /*
+     * The status is already known here, so the error names it rather than the
+     * timeout — the point of the fix is that the command stops waiting at all.
+     * Before it, a 500 whose body never completed hung with no limit.
+     */
+    expect((error as PlaneError).status).toBe(500);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(50);
     expect(Date.now() - started).toBeLessThan(2000);
   });
 });
@@ -128,8 +146,10 @@ describe("deadlines", () => {
 describe("pagination", () => {
   test("a bare array on a later page keeps the earlier rows", async () => {
     let call = 0;
-    const paged = (async () => {
+    const seen: Array<string | null> = [];
+    const paged = (async (input: string) => {
       call += 1;
+      seen.push(new URL(input).searchParams.get("cursor"));
       return call === 1
         ? new Response(
             JSON.stringify({ results: [{ id: 1 }], next_page_results: true, next_cursor: "c" }),
@@ -141,12 +161,17 @@ describe("pagination", () => {
     const client = new PlaneClient(config());
     const rows = await withFetch(paged, () => client.listAll<{ id: number }>("projects/"));
     expect(rows.map((row) => row.id)).toEqual([1, 2]);
+    // Without this the test passed even when the cursor was never sent, and the
+    // second page was simply the first one again.
+    expect(seen).toEqual([null, "c"]);
   });
 
   test("cursors are followed to the end", async () => {
     let call = 0;
-    const paged = (async () => {
+    const seen: Array<string | null> = [];
+    const paged = (async (input: string) => {
       call += 1;
+      seen.push(new URL(input).searchParams.get("cursor"));
       const last = call === 3;
       return new Response(
         JSON.stringify({
@@ -161,6 +186,7 @@ describe("pagination", () => {
     const client = new PlaneClient(config());
     const rows = await withFetch(paged, () => client.listAll<{ id: number }>("projects/"));
     expect(rows.map((row) => row.id)).toEqual([1, 2, 3]);
+    expect(seen).toEqual([null, "c1", "c2"]);
   });
 });
 
@@ -218,7 +244,17 @@ describe("the registry agrees with what commands accept", () => {
   });
 
   test("commands taking a project reference declare --project", () => {
-    for (const name of ["list", "show", "states", "labels", "create", "update", "done", "delete"]) {
+    for (const name of [
+      "list",
+      "show",
+      "states",
+      "labels",
+      "create",
+      "update",
+      "done",
+      "delete",
+      "comment",
+    ]) {
       const command = ALL_COMMANDS.find((entry) => entry.name === name);
       expect(command).toBeDefined();
       expect([...knownFlags(command as (typeof ALL_COMMANDS)[number])]).toContain("project");

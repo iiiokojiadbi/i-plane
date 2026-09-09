@@ -170,8 +170,12 @@ export class PlaneClient {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
+        /*
+         * Aborting is what actually stops the transfer. cancel() cannot run here
+         * — text() holds the stream lock — so calling it only produced a
+         * rejected promise nobody read.
+         */
         controller.abort();
-        void response.body?.cancel().catch(() => {});
         reject(new PlaneError(`Response body stalled; gave up after ${limitMs / 1000}s.`));
       }, limitMs);
     });

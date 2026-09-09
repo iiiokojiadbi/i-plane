@@ -86,11 +86,18 @@ const tightenLists = (markdown: string): string => {
   const stack: Array<{ source: number; childIndent: number }> = [];
 
   for (const line of lines) {
-    const border = /^\s*(`{3,}|~{3,})/.exec(line);
+    const border = /^\s*(`{3,}|~{3,})\s*(.*)$/.exec(line);
     if (border !== null) {
       const marker = border[1] ?? "";
-      // Inside a fence nothing is a list. Rewriting there changed stored code.
-      fence = fence === undefined ? marker : marker.startsWith(fence[0] ?? "") ? undefined : fence;
+      const info = (border[2] ?? "").trim();
+      if (fence === undefined) {
+        // An opening fence carries an info string; a closing one never does.
+        fence = marker;
+      } else if (marker[0] === fence[0] && marker.length >= fence.length && info === "") {
+        // A closing fence needs the same character and at least the same length:
+        // a three-backtick line inside a four-backtick block closes nothing.
+        fence = undefined;
+      }
       out.push(line);
       continue;
     }
@@ -101,6 +108,23 @@ const tightenLists = (markdown: string): string => {
 
     const match = /^(\s*)([-*+]|\d+[.)])(\s+)(.*)$/.exec(line);
     if (match === null) {
+      /*
+       * A continuation line inside a list item. Its indentation has to follow
+       * the marker that was rewritten above, or four spaces of turndown padding
+       * become eight and the paragraph renders as a code block.
+       */
+      const open = stack[stack.length - 1];
+      const indented = /^(\s+)(\S.*)$/.exec(line);
+      if (open !== undefined && indented !== null && (indented[1] ?? "").length > open.source) {
+        out.push(`${" ".repeat(open.childIndent)}${indented[2] ?? ""}`);
+        continue;
+      }
+      if (line.trim() === "") {
+        out.push(line);
+        continue;
+      }
+      // Anything else ends the list.
+      if (indented === null) stack.length = 0;
       out.push(line);
       continue;
     }
@@ -133,14 +157,29 @@ const tightenLists = (markdown: string): string => {
  * first row loses no data: a header is how Markdown spells "first row".
  */
 const promoteHeaderlessTables = (html: string): string =>
-  html.replace(/<table[^>]*>[\s\S]*?<\/table>/g, (table) => {
-    if (/<th[\s>]/i.test(table)) return table;
-    let promoted = false;
-    return table.replace(/<tr[^>]*>[\s\S]*?<\/tr>/, (row) => {
-      if (promoted) return row;
-      promoted = true;
-      return row.replace(/<td(\s[^>]*)?>/gi, "<th$1>").replace(/<\/td>/gi, "</th>");
-    });
+  html.replace(/<table[^>]*>[\s\S]*?<\/table>/gi, (table) => {
+    const firstRow = /<tr[^>]*>[\s\S]*?<\/tr>/i.exec(table);
+    if (firstRow === null) return table;
+    // What matters is whether the FIRST row has headers. A <th> further down
+    // does not give GFM the header row it needs, and checking the whole table
+    // let those cases through untouched.
+    if (/<th[\s>]/i.test(firstRow[0])) return table;
+
+    // A caption keeps turndown on its raw-HTML path even after promotion, so it
+    // is lifted out and kept as a line of its own above the table.
+    let caption = "";
+    const withoutCaption = table.replace(
+      /<caption[^>]*>([\s\S]*?)<\/caption>/i,
+      (_, body: string) => {
+        caption = body.replace(/<[^>]+>/g, "").trim();
+        return "";
+      },
+    );
+
+    const promoted = withoutCaption.replace(/<tr[^>]*>[\s\S]*?<\/tr>/i, (row) =>
+      row.replace(/<td(\s[^>]*)?>/gi, "<th$1>").replace(/<\/td>/gi, "</th>"),
+    );
+    return caption === "" ? promoted : `<p>${caption}</p>${promoted}`;
   });
 
 /** The HTML Plane returns, back to Markdown an agent can read in one glance. */

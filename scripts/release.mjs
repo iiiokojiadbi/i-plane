@@ -159,10 +159,13 @@ try {
    * a registry host named e404.example made an unreachable network look like a
    * free version number.
    */
-  const missing =
-    /npm error code E404/i.test(text) ||
-    /^npm ERR! code E404$/im.test(text) ||
-    /is not in this registry/i.test(text);
+  /*
+   * Only npm's own error code decides. A phrase match alongside it let an E403
+   * carrying "403 Access denied" read as a free version number, which would
+   * publish over whatever is already there.
+   */
+  const code = /npm (?:error|ERR!) code (E\d+|[A-Z_]+)/i.exec(text)?.[1];
+  const missing = code === "E404";
   if (!missing) {
     throw new Error(
       `could not ask the registry whether ${reference} exists, so publishing is unsafe:\n${text.trim()}`,

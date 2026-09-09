@@ -62,9 +62,12 @@ export const isExcluded = (hostname: string): boolean => {
     .replace(/\.$/, "")
     .replace(/^\[|\]$/g, "");
   for (const entry of raw.split(/[,\s]+/)) {
+    // A trailing dot is normalized on the rule as well as the host: curl treats
+    // "example.com." and "example.com" as the same name on either side.
     const rule = entry
       .trim()
       .toLowerCase()
+      .replace(/\.$/, "")
       .replace(/^\./, "")
       .replace(/^\[|\]$/g, "");
     if (rule === "") continue;

@@ -49,11 +49,29 @@ export const emit = (text: string): void => {
 };
 
 /**
+ * Scrubs strings inside a model before anything formats them. Scrubbing only the
+ * finished text is not enough: a formatter truncates, and half a token no longer
+ * matches the whole one — a work item whose title contained the key printed
+ * twenty-six characters of it followed by an ellipsis.
+ */
+const scrubDeep = <T>(value: T): T => {
+  if (typeof value === "string") return scrub(value) as T;
+  if (Array.isArray(value)) return value.map(scrubDeep) as T;
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, inner] of Object.entries(value)) out[key] = scrubDeep(inner);
+    return out as T;
+  }
+  return value;
+};
+
+/**
  * One place decides between machine and human output, so no command can forget
  * to support --json.
  */
 export const printValue = <T>(value: T, json: boolean, format: (value: T) => string): void => {
-  emit(json ? JSON.stringify(value, null, 2) : format(value));
+  const safe = scrubDeep(value);
+  emit(json ? JSON.stringify(safe, null, 2) : format(safe));
 };
 
 export const fail = (message: string, code = 1): never => {

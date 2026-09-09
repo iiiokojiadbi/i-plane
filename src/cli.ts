@@ -39,13 +39,13 @@ import {
   summarize,
   whoami,
 } from "./commands/workspace.ts";
-import { resolveConfig } from "./config.ts";
+import { peekToken, resolveConfig } from "./config.ts";
 import { needsProxy, proxyFetch, reExecWithProxy } from "./http.ts";
 import { fail, guardSecret, printValue } from "./output.ts";
-import { findCommand, knownFlags } from "./registry.ts";
+import { findCommand, GLOBAL_FLAGS, knownFlags } from "./registry.ts";
 import { listProjects } from "./resolve.ts";
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.1";
 
 /** Short forms are what fingers type; long ones are what a reader understands. */
 const ALIASES: Readonly<Record<string, string>> = {
@@ -67,7 +67,22 @@ let current: string | undefined;
  */
 const rejectUnknownFlags = (command: string | undefined, args: ParsedArgs): void => {
   const known = command === undefined ? undefined : findCommand(command);
-  if (known === undefined) return;
+  if (known === undefined) {
+    /*
+     * help and version are real commands that the registry does not list, and
+     * short-circuiting here let them accept anything: `help --pirority` exited
+     * 0, teaching the caller that the flag exists.
+     */
+    if (command === "help" || command === "version") {
+      const unknown = [...args.flags.keys()].filter((flag) => !GLOBAL_FLAGS.includes(flag));
+      if (unknown.length > 0) {
+        throw new UsageError(
+          `${command} does not take ${unknown.map((flag) => `--${flag}`).join(", ")}.`,
+        );
+      }
+    }
+    return;
+  }
   current = command;
   const allowed = knownFlags(known);
   const unknown = [...args.flags.keys()].filter((flag) => !allowed.has(flag));
@@ -121,6 +136,17 @@ const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2), 1);
   const json = flagBool(args, "json");
 
+  /*
+   * Guard before anything can print. Registering after configuration resolved
+   * left two windows open: an invalid --url and an unknown flag both produced
+   * diagnostics that quoted the token back when it was the offending value.
+   */
+  const early = peekToken({
+    token: flagValue(args, "token"),
+    configPath: flagValue(args, "config"),
+  });
+  if (early !== undefined) guardSecret(early);
+
   if (runOffline(args, json)) return;
 
   const config = resolveConfig({
@@ -130,9 +156,7 @@ const main = async (): Promise<void> => {
     configPath: flagValue(args, "config"),
   });
 
-  // Registered before anything can print: from here on the token cannot reach
-  // stdout or stderr through any path, including --json payloads a server
-  // echoes back.
+  // The resolved token may differ from what was visible early on.
   guardSecret(config.token.value);
 
   const raw = args.path[0];

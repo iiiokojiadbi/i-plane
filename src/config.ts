@@ -116,6 +116,17 @@ const missing = (what: string, envName: string, fileKey: string, path: string): 
       `  ${fileKey}=<value> in ${path}`,
   );
 
+/**
+ * Finds the token without validating anything else, so it can be guarded before
+ * the first diagnostic is printed. An invalid --url, or the token itself typed
+ * as a flag name, produced a usage error that quoted the key back.
+ */
+export const peekToken = (input: ConfigInput): string | undefined => {
+  const configPath = input.configPath ?? process.env.PLANE_CONFIG ?? DEFAULT_CONFIG_PATH;
+  const file = readCredentials(configPath);
+  return pick(input.token, ["PLANE_API_KEY", "PLANE_TOKEN"], ["PLANE_API_KEY"], file)?.value;
+};
+
 export const resolveConfig = (input: ConfigInput): Config => {
   const configPath = input.configPath ?? process.env.PLANE_CONFIG ?? DEFAULT_CONFIG_PATH;
   const file = readCredentials(configPath);
