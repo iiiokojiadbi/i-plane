@@ -19,8 +19,33 @@ export const printColumns = (rows: ReadonlyArray<Column>, indent = "  "): Readon
   return rows.map((row) => `${indent}${row.name.padEnd(width)}  ${row.text}`);
 };
 
+/*
+ * Every byte this process prints goes through emit or fail, and both scrub the
+ * secret first. Guarding individual call sites failed twice: the token still
+ * reached output through invalid JSON, a warning written after a successful
+ * create, and a server echoing the key back inside a --json payload. A single
+ * chokepoint cannot be forgotten at a new call site.
+ */
+let secret = "";
+
+/** Registered once, as soon as configuration resolves. */
+export const guardSecret = (value: string): void => {
+  secret = value;
+};
+
+export const scrub = (text: string): string => {
+  if (secret === "") return text;
+  let safe = text.split(secret).join("[token]");
+  // A token carrying whitespace reaches some error paths in pieces.
+  for (const piece of secret.split(/\s+/)) {
+    if (piece.length >= 12) safe = safe.split(piece).join("[token]");
+  }
+  return safe;
+};
+
 export const emit = (text: string): void => {
-  process.stdout.write(text.endsWith("\n") ? text : `${text}\n`);
+  const safe = scrub(text);
+  process.stdout.write(safe.endsWith("\n") ? safe : `${safe}\n`);
 };
 
 /**
@@ -32,8 +57,13 @@ export const printValue = <T>(value: T, json: boolean, format: (value: T) => str
 };
 
 export const fail = (message: string, code = 1): never => {
-  process.stderr.write(`${message}\n`);
+  process.stderr.write(`${scrub(message)}\n`);
   process.exit(code);
+};
+
+/** Diagnostics that are not fatal still go through the same guard. */
+export const warn = (message: string): void => {
+  process.stderr.write(`${scrub(message)}\n`);
 };
 
 /** Collapses whitespace: a work item title with a newline in it must stay one line. */

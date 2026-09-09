@@ -81,6 +81,7 @@ export const GROUPS: ReadonlyArray<Group> = [
             value: "<n>",
             summary: "Show only the first n rows. The output says how many were hidden.",
           },
+          PROJECT_OPTION,
           JSON_OPTION,
         ],
         examples: [
@@ -155,7 +156,15 @@ export const GROUPS: ReadonlyArray<Group> = [
         name: "done",
         args: "<ID>",
         summary: "Move to the first completed state. Shorthand for update --state.",
-        options: [PROJECT_OPTION, JSON_OPTION],
+        // done delegates to update, so it accepts what update accepts. Listing
+        // fewer flags here rejects calls the implementation handles.
+        options: [
+          { flag: "--priority", value: "<level>", summary: "Set priority while closing." },
+          { flag: "--name", value: "<title>", summary: "Rename while closing." },
+          { flag: "--description", value: "<markdown>", summary: "Replace the description." },
+          PROJECT_OPTION,
+          JSON_OPTION,
+        ],
         examples: ["i-plane done CLOUD-8"],
       },
       {
@@ -186,14 +195,14 @@ export const GROUPS: ReadonlyArray<Group> = [
         name: "states",
         args: "[project]",
         summary: "States and their groups — the names --state accepts.",
-        options: [JSON_OPTION],
+        options: [PROJECT_OPTION, JSON_OPTION],
         examples: ["i-plane states CLOUD"],
       },
       {
         name: "labels",
         args: "[project]",
         summary: "Labels of a project.",
-        options: [JSON_OPTION],
+        options: [PROJECT_OPTION, JSON_OPTION],
         examples: ["i-plane labels CLOUD"],
       },
       {

@@ -8,7 +8,7 @@
 
 import { flagBool, flagNumber, flagValue, type ParsedArgs, UsageError } from "../args.ts";
 import type { PlaneClient } from "../client.ts";
-import { oneLine, printColumns, truncate } from "../output.ts";
+import { oneLine, printColumns, truncate, warn } from "../output.ts";
 import { findState, listStates, resolveIssue, resolveProject } from "../resolve.ts";
 import { htmlToMarkdown, markdownToHtml } from "../richtext.ts";
 import type { Issue, State } from "../types.ts";
@@ -226,7 +226,7 @@ export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promis
     created_state = states.find((s) => s.id === created.state);
   } catch (cause) {
     const reason = cause instanceof Error ? cause.message : String(cause);
-    process.stderr.write(`${ref} was created; could not read its state: ${reason}\n`);
+    warn(`${ref} was created; could not read its state: ${reason}`);
   }
 
   return {

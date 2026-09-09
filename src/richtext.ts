@@ -54,7 +54,13 @@ turndown.addRule("escapedTableCellPipes", {
     // The row's leading pipe belongs to its first cell; without it the header
     // row loses its opening delimiter and stops being a table.
     const isFirst = siblings !== undefined && siblings[0] === node;
-    return `${isFirst ? "| " : " "}${content.trim().replace(/\|/g, "\\|")} |`;
+    /*
+     * A newline inside a cell starts a new table row when the result is read
+     * back, so block content is folded onto one line. Losing the paragraph break
+     * is a smaller loss than losing the table.
+     */
+    const flat = content.trim().replace(/\s*\n+\s*/g, " ");
+    return `${isFirst ? "| " : " "}${flat.replace(/\|/g, "\\|")} |`;
   },
 });
 
@@ -67,19 +73,78 @@ export const markdownToHtml = (markdown: string): string => renderer.render(mark
  * an agent paying per token, so it is squeezed to one space and two-space
  * nesting. Content is untouched — only the space between marker and text.
  */
-const tightenLists = (markdown: string): string =>
-  markdown
-    .split("\n")
-    .map((line) => {
-      const match = /^(\s*)([-*+]|\d+[.)])(\s+)(.*)$/.exec(line);
-      if (match === null) return line;
-      const depth = Math.floor((match[1] ?? "").length / 4);
-      return `${"  ".repeat(depth)}${match[2]} ${match[4]}`;
-    })
-    .join("\n");
+const tightenLists = (markdown: string): string => {
+  const lines = markdown.split("\n");
+  const out: string[] = [];
+  let fence: string | undefined;
+  /*
+   * One frame per open list level: where the source indented it, and the column
+   * its children get in the output. A child must clear its parent's marker —
+   * three columns under "1. ", two under "- " — or the renderer reads it as a
+   * new top-level list rather than a nested one.
+   */
+  const stack: Array<{ source: number; childIndent: number }> = [];
+
+  for (const line of lines) {
+    const border = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (border !== null) {
+      const marker = border[1] ?? "";
+      // Inside a fence nothing is a list. Rewriting there changed stored code.
+      fence = fence === undefined ? marker : marker.startsWith(fence[0] ?? "") ? undefined : fence;
+      out.push(line);
+      continue;
+    }
+    if (fence !== undefined) {
+      out.push(line);
+      continue;
+    }
+
+    const match = /^(\s*)([-*+]|\d+[.)])(\s+)(.*)$/.exec(line);
+    if (match === null) {
+      out.push(line);
+      continue;
+    }
+
+    const source = (match[1] ?? "").length;
+    const marker = match[2] ?? "-";
+
+    // Close every level this line has dedented out of.
+    while (stack.length > 0 && source < (stack[stack.length - 1]?.source ?? 0)) stack.pop();
+
+    const enclosing = stack[stack.length - 1];
+    const nested = enclosing !== undefined && source > enclosing.source;
+    // A sibling replaces the frame it shares a level with.
+    if (!nested && enclosing !== undefined) stack.pop();
+
+    const parent = stack[stack.length - 1];
+    const indent =
+      nested && enclosing !== undefined ? enclosing.childIndent : (parent?.childIndent ?? 0);
+
+    stack.push({ source, childIndent: indent + marker.length + 1 });
+    out.push(`${" ".repeat(indent)}${marker} ${match[4]}`);
+  }
+  return out.join("\n");
+};
+
+/*
+ * GFM tables need a header row. turndown-plugin-gfm leaves a table whose first
+ * row is all <td> as raw HTML, and the renderer then escapes that markup on the
+ * way back — a table turns into a paragraph showing its own tags. Promoting the
+ * first row loses no data: a header is how Markdown spells "first row".
+ */
+const promoteHeaderlessTables = (html: string): string =>
+  html.replace(/<table[^>]*>[\s\S]*?<\/table>/g, (table) => {
+    if (/<th[\s>]/i.test(table)) return table;
+    let promoted = false;
+    return table.replace(/<tr[^>]*>[\s\S]*?<\/tr>/, (row) => {
+      if (promoted) return row;
+      promoted = true;
+      return row.replace(/<td(\s[^>]*)?>/gi, "<th$1>").replace(/<\/td>/gi, "</th>");
+    });
+  });
 
 /** The HTML Plane returns, back to Markdown an agent can read in one glance. */
 export const htmlToMarkdown = (html: string | null | undefined): string => {
   if (html == null || html.trim() === "") return "";
-  return tightenLists(turndown.turndown(html)).trim();
+  return tightenLists(turndown.turndown(promoteHeaderlessTables(html))).trim();
 };

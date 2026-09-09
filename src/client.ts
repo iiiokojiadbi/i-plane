@@ -81,11 +81,20 @@ export class PlaneClient {
       if (value !== undefined) url.searchParams.set(key, String(value));
     }
 
-    const controller = new AbortController();
     const limit = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const timeout = setTimeout(() => controller.abort(), limit);
-
+    /*
+     * Transport selection happens before the timer starts. Starting it first
+     * leaked a pending timer whenever proxy initialization threw, because the
+     * throw escaped past the cleanup block.
+     */
     const send = await this.fetcher(url.toString());
+
+    const controller = new AbortController();
+    const started = Date.now();
+    const timeout = setTimeout(() => controller.abort(), limit);
+    // One deadline covers headers and body together. A fresh timer per phase
+    // means a slow response can take twice what the caller allowed.
+    const remaining = (): number => Math.max(0, limit - (Date.now() - started));
 
     let response: Response;
     try {
@@ -101,9 +110,8 @@ export class PlaneClient {
       });
     } catch (cause) {
       if (cause instanceof Error && cause.name === "AbortError") {
-        throw new PlaneError(
-          `No answer from ${this.config.url.value} within ${(options.timeoutMs ?? DEFAULT_TIMEOUT_MS) / 1000}s.`,
-        );
+        clearTimeout(timeout);
+        throw new PlaneError(`No answer from ${this.config.url.value} within ${limit / 1000}s.`);
       }
       /*
        * The cause carries the diagnosis — ENOTFOUND, ECONNREFUSED, a certificate
@@ -118,38 +126,54 @@ export class PlaneClient {
           : `${reason} (${[inner.name, (inner as { code?: string }).code, inner.message]
               .filter(Boolean)
               .join(" ")})`;
+      clearTimeout(timeout);
       throw new PlaneError(
         redact(`Cannot reach ${this.config.url.value}: ${detail}`, this.config.token.value),
+      );
+    }
+
+    try {
+      if (!response.ok) {
+        // Error bodies get the same deadline as any other: a stalled 500 used
+        // to hang with no limit at all.
+        throw await this.describeFailure(response, remaining(), controller);
+      }
+
+      if (response.status === 204) return undefined as T;
+      const text = await this.readBody(response, remaining(), controller);
+      if (text === "") return undefined as T;
+      return JSON.parse(text) as T;
+    } catch (cause) {
+      if (cause instanceof PlaneError) throw cause;
+      throw new PlaneError(
+        redact(
+          `Expected JSON from ${url.pathname}: ${cause instanceof Error ? cause.message : String(cause)}`,
+          this.config.token.value,
+        ).slice(0, 200),
       );
     } finally {
       clearTimeout(timeout);
     }
-
-    if (!response.ok) throw await this.describeFailure(response, controller);
-
-    if (response.status === 204) return undefined as T;
-    /*
-     * The deadline covers the body too. Clearing the timer once headers arrive
-     * left a stalled body waiting with no limit at all — the exact failure a
-     * timeout exists to catch.
-     */
-    const text = await this.readBody(response, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-    if (text === "") return undefined as T;
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new PlaneError(`Expected JSON from ${url.pathname}, got ${text.slice(0, 120)}`);
-    }
   }
 
-  /** Reads a body under the same deadline as the request that produced it. */
-  private async readBody(response: Response, limitMs: number): Promise<string> {
+  /**
+   * Reads a body under whatever is left of the request's deadline, and actually
+   * stops the transfer when it runs out. Abandoning the race without aborting
+   * left the connection and the stream open behind a command that had already
+   * given up.
+   */
+  private async readBody(
+    response: Response,
+    limitMs: number,
+    controller: AbortController,
+  ): Promise<string> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new PlaneError(`Response body stalled; gave up after ${limitMs / 1000}s.`)),
-        limitMs,
-      );
+      timer = setTimeout(() => {
+        controller.abort();
+        void response.body?.cancel().catch(() => {});
+        reject(new PlaneError(`Response body stalled; gave up after ${limitMs / 1000}s.`));
+      }, limitMs);
     });
     try {
       return await Promise.race([response.text(), deadline]);
@@ -181,12 +205,16 @@ export class PlaneClient {
 
   private async describeFailure(
     response: Response,
+    limitMs: number,
     controller: AbortController,
   ): Promise<PlaneError> {
-    void controller;
-    const body = await response.text().catch(() => "");
+    // An error body is read under the deadline too: a stalled 500 used to hang
+    // with no limit at all.
+    const body = await this.readBody(response, limitMs, controller).catch(() => "");
     // A server can echo the key back inside an error body.
-    const detail = redact(body.slice(0, 300), this.config.token.value);
+    // Redact first, then truncate. Cutting first left the token's opening
+    // characters visible whenever padding pushed it across the boundary.
+    const detail = redact(body, this.config.token.value).slice(0, 300);
     switch (response.status) {
       case 401:
       case 403:

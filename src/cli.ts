@@ -41,7 +41,7 @@ import {
 } from "./commands/workspace.ts";
 import { resolveConfig } from "./config.ts";
 import { needsProxy, proxyFetch, reExecWithProxy } from "./http.ts";
-import { fail, printValue } from "./output.ts";
+import { fail, guardSecret, printValue } from "./output.ts";
 import { findCommand, knownFlags } from "./registry.ts";
 import { listProjects } from "./resolve.ts";
 
@@ -60,10 +60,30 @@ const ALIASES: Readonly<Record<string, string>> = {
 /** Remembered so a failure can be answered with that command's own hint. */
 let current: string | undefined;
 
+/*
+ * A flag a command does not know is a mistake, and a silent one: a misspelled
+ * --priority returned an unfiltered list with exit 0, which a caller cannot tell
+ * apart from a correct answer.
+ */
+const rejectUnknownFlags = (command: string | undefined, args: ParsedArgs): void => {
+  const known = command === undefined ? undefined : findCommand(command);
+  if (known === undefined) return;
+  current = command;
+  const allowed = knownFlags(known);
+  const unknown = [...args.flags.keys()].filter((flag) => !allowed.has(flag));
+  if (unknown.length > 0) {
+    const list = unknown.map((flag) => `--${flag}`).join(", ");
+    throw new UsageError(`${known.name} does not take ${list}. Its flags are listed below.`);
+  }
+};
+
 /** Commands that never touch the network, so they work before configuration exists. */
 const runOffline = (args: ParsedArgs, json: boolean): boolean => {
   const raw = args.path[0];
   const command = raw === undefined ? undefined : (ALIASES[raw] ?? raw);
+  // Offline commands validate their flags too: `guide --pirority urgent`
+  // exiting 0 teaches the caller that the flag exists.
+  rejectUnknownFlags(command, args);
 
   // No arguments at all: the guide, not a question nobody asked.
   if (command === undefined && !flagBool(args, "version")) {
@@ -109,6 +129,11 @@ const main = async (): Promise<void> => {
     workspace: flagValue(args, "workspace"),
     configPath: flagValue(args, "config"),
   });
+
+  // Registered before anything can print: from here on the token cannot reach
+  // stdout or stderr through any path, including --json payloads a server
+  // echoes back.
+  guardSecret(config.token.value);
 
   const raw = args.path[0];
   const command = raw === undefined ? undefined : (ALIASES[raw] ?? raw);

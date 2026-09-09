@@ -154,7 +154,15 @@ try {
    * problem into permission to publish over an existing version.
    */
   const text = String((cause && cause.stderr) || cause?.message || "");
-  const missing = /E404|is not in this registry|404 Not Found/i.test(text);
+  /*
+   * Match the error code npm reports, not the substring anywhere in its output:
+   * a registry host named e404.example made an unreachable network look like a
+   * free version number.
+   */
+  const missing =
+    /npm error code E404/i.test(text) ||
+    /^npm ERR! code E404$/im.test(text) ||
+    /is not in this registry/i.test(text);
   if (!missing) {
     throw new Error(
       `could not ask the registry whether ${reference} exists, so publishing is unsafe:\n${text.trim()}`,
