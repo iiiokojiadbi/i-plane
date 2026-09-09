@@ -87,7 +87,7 @@ export const statesOf = async (
   args: ParsedArgs,
 ): Promise<ReadonlyArray<State>> => {
   const ref = args.positionals[0] ?? flagValue(args, "project");
-  if (ref === undefined) throw new UsageError("Which project? i-plane states CLOUD");
+  if (ref === undefined) throw new UsageError("Which project?");
   const project = await resolveProject(client, ref);
   const states = await listStates(client, project.id);
   return [...states].sort((a, b) => stateGroupRank(a.group) - stateGroupRank(b.group));
@@ -110,7 +110,7 @@ export const labelsOf = async (
   args: ParsedArgs,
 ): Promise<ReadonlyArray<Label>> => {
   const ref = args.positionals[0] ?? flagValue(args, "project");
-  if (ref === undefined) throw new UsageError("Which project? i-plane labels CLOUD");
+  if (ref === undefined) throw new UsageError("Which project?");
   const project = await resolveProject(client, ref);
   return client.listAll<Label>(`projects/${project.id}/labels/`, {
     query: { fields: "id,name,color", per_page: 100 },

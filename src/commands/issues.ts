@@ -80,7 +80,7 @@ export interface Listing {
 export const listIssues = async (client: PlaneClient, args: ParsedArgs): Promise<Listing> => {
   const projectRef = args.positionals[0] ?? flagValue(args, "project");
   if (projectRef === undefined) {
-    throw new UsageError("Which project? Pass it as an argument: i-plane ls CLOUD");
+    throw new UsageError("Which project?");
   }
   const project = await resolveProject(client, projectRef);
 
@@ -137,7 +137,7 @@ export const showIssue = async (
   baseUrl: string,
 ): Promise<Detail> => {
   const ref = args.positionals[0];
-  if (ref === undefined) throw new UsageError("Which work item? i-plane show CLOUD-8");
+  if (ref === undefined) throw new UsageError("Which work item?");
 
   const { issue, projectId } = await resolveIssue(
     client,
@@ -184,11 +184,11 @@ export const formatDetail = (detail: Detail): string => {
 
 export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promise<Row> => {
   const title = args.positionals.join(" ").trim();
-  if (title === "") throw new UsageError('What is it called? i-plane new "Fix the resolver"');
+  if (title === "") throw new UsageError("What is it called?");
 
   const projectRef = flagValue(args, "project");
   if (projectRef === undefined) {
-    throw new UsageError('Which project? i-plane new --project CLOUD "title"');
+    throw new UsageError("Which project? Pass --project.");
   }
   const project = await resolveProject(client, projectRef);
 
@@ -224,7 +224,7 @@ export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promis
 
 export const updateIssue = async (client: PlaneClient, args: ParsedArgs): Promise<Row> => {
   const ref = args.positionals[0];
-  if (ref === undefined) throw new UsageError("Which work item? i-plane set CLOUD-8 --state done");
+  if (ref === undefined) throw new UsageError("Which work item?");
 
   const { issue, projectId } = await resolveIssue(client, ref, flagValue(args, "project"));
   const project = await resolveProject(client, projectId);
@@ -262,7 +262,7 @@ export const updateIssue = async (client: PlaneClient, args: ParsedArgs): Promis
 /** done is set --state <first completed state>, spelled the way people say it. */
 export const completeIssue = async (client: PlaneClient, args: ParsedArgs): Promise<Row> => {
   const ref = args.positionals[0];
-  if (ref === undefined) throw new UsageError("Which work item? i-plane done CLOUD-8");
+  if (ref === undefined) throw new UsageError("Which work item?");
   const { projectId } = await resolveIssue(client, ref, flagValue(args, "project"));
   const states = await listStates(client, projectId);
   const completed = states.find((s) => s.group === "completed");
@@ -276,7 +276,7 @@ export const completeIssue = async (client: PlaneClient, args: ParsedArgs): Prom
 
 export const deleteIssue = async (client: PlaneClient, args: ParsedArgs): Promise<string> => {
   const ref = args.positionals[0];
-  if (ref === undefined) throw new UsageError("Which work item? i-plane rm CLOUD-8 --yes");
+  if (ref === undefined) throw new UsageError("Which work item?");
   if (!flagBool(args, "yes")) {
     throw new UsageError(`Deleting is not undoable. Repeat with --yes to delete ${ref}.`);
   }
@@ -289,7 +289,7 @@ export const commentIssue = async (client: PlaneClient, args: ParsedArgs): Promi
   const ref = args.positionals[0];
   const text = args.positionals.slice(1).join(" ").trim();
   if (ref === undefined || text === "") {
-    throw new UsageError('i-plane comment CLOUD-8 "what happened"');
+    throw new UsageError("Which work item, and what does the comment say?");
   }
   const { issue, projectId } = await resolveIssue(client, ref, flagValue(args, "project"));
   await client.request(`projects/${projectId}/issues/${issue.id}/comments/`, {
@@ -314,7 +314,7 @@ export const findIssues = async (
   args: ParsedArgs,
 ): Promise<ReadonlyArray<Found>> => {
   const text = args.positionals.join(" ").trim();
-  if (text === "") throw new UsageError('What to search for? i-plane find "resolver"');
+  if (text === "") throw new UsageError("What to search for?");
   const answer = await client.request<{
     issues?: ReadonlyArray<{
       id: string;

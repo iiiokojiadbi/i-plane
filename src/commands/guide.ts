@@ -1,85 +1,150 @@
 /*
- * The map. One call tells a fresh session what exists and in what order it is
- * usually done — the thing a --help listing cannot say, because help sorts
- * alphabetically and lists every flag.
+ * The guide, and the per-command help.
+ *
+ * Both are rendered from the registry, so a flag cannot exist without being
+ * documented, and a documented flag cannot stop existing quietly.
+ *
+ * The guide is what `i-plane` prints with no arguments. That choice is
+ * deliberate: the first call of a session should teach how the tool behaves,
+ * not answer a question nobody asked yet.
  */
 
 import { printColumns } from "../output.ts";
-
-export interface Entry {
-  readonly command: string;
-  readonly summary: string;
-}
-
-export interface Group {
-  readonly title: string;
-  readonly commands: ReadonlyArray<Entry>;
-}
+import type { Command } from "../registry.ts";
+import { FLOW, GROUPS, NOTES } from "../registry.ts";
 
 export interface GuideReport {
-  readonly map: ReadonlyArray<Group>;
-  readonly flow: ReadonlyArray<Entry>;
+  readonly groups: typeof GROUPS;
+  readonly flow: typeof FLOW;
+  readonly notes: typeof NOTES;
 }
 
-/* Groups follow the order of work, not the alphabet. */
-export const MAP: ReadonlyArray<Group> = [
-  {
-    title: "LOOK AROUND",
-    commands: [
-      { command: "i-plane", summary: "Workspace summary: projects and their counts." },
-      { command: "projects", summary: "List projects with identifiers." },
-      { command: "list [project]", summary: "Work items, one line each. Alias: ls" },
-      { command: "show <ID>", summary: "One work item: CLOUD-8." },
-      { command: "search <text>", summary: "Search across the workspace. Alias: find" },
-    ],
-  },
-  {
-    title: "CHANGE THINGS",
-    commands: [
-      { command: "create <title>", summary: "Create a work item. Alias: new" },
-      { command: "update <ID> [flags]", summary: "Change state, priority, title. Alias: set" },
-      { command: "done <ID>", summary: "Move to the first completed state." },
-      { command: "comment <ID> <text>", summary: "Add a comment." },
-      { command: "delete <ID>", summary: "Delete a work item. Needs --yes. Alias: rm" },
-    ],
-  },
-  {
-    title: "PROJECT SHAPE",
-    commands: [
-      { command: "states [project]", summary: "States of a project and their groups." },
-      { command: "labels [project]", summary: "Labels of a project." },
-      { command: "members", summary: "Who is in the workspace." },
-    ],
-  },
-  {
-    title: "SELF",
-    commands: [
-      { command: "config", summary: "Where url, token and workspace came from." },
-      { command: "guide", summary: "This map." },
-      { command: "whoami", summary: "The account behind the token." },
-    ],
-  },
-];
+export const guideReport = (): GuideReport => ({ groups: GROUPS, flow: FLOW, notes: NOTES });
 
-export const FLOW: ReadonlyArray<Entry> = [
-  { command: "i-plane", summary: "Start here. It names the projects you can work in." },
-  { command: "list CLOUD", summary: "See the work items. Add --state or --priority to narrow." },
-  { command: "show CLOUD-8", summary: "Read one before changing it." },
-  { command: "update", summary: "Change what you meant; done is a shortcut for update --state." },
-  { command: "--json", summary: "Every command takes it when you need all the fields." },
-  { command: "config", summary: "When something targets the wrong place, look here first." },
-];
+const label = (command: Command): string =>
+  `${command.name}${command.args === undefined ? "" : ` ${command.args}`}`;
 
-export const guideReport = (): GuideReport => ({ map: MAP, flow: FLOW });
+/** Wraps prose so a terminal at eighty columns stays readable. */
+const wrap = (text: string, width: number, indent: string): ReadonlyArray<string> => {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current === "") {
+      current = word;
+    } else if (`${current} ${word}`.length + indent.length <= width) {
+      current = `${current} ${word}`;
+    } else {
+      lines.push(indent + current);
+      current = word;
+    }
+  }
+  if (current !== "") lines.push(indent + current);
+  return lines;
+};
 
 export const formatGuide = (report: GuideReport): string => {
   const lines: string[] = [];
-  for (const [index, group] of report.map.entries()) {
-    if (index > 0) lines.push("");
+
+  for (const group of report.groups) {
     lines.push(group.title);
-    lines.push(...printColumns(group.commands.map((e) => ({ name: e.command, text: e.summary }))));
+    lines.push(
+      ...printColumns(
+        group.commands.map((command) => ({
+          name: label(command),
+          text:
+            command.alias === undefined
+              ? command.summary
+              : `${command.summary}  (alias: ${command.alias})`,
+        })),
+      ),
+    );
+    lines.push("");
   }
-  lines.push("", "FLOW");
-  lines.push(...printColumns(report.flow.map((e) => ({ name: e.command, text: e.summary }))));
+
+  lines.push("FLOW");
+  lines.push(
+    ...printColumns(report.flow.map((step) => ({ name: step.command, text: step.summary }))),
+  );
+  lines.push("");
+
+  lines.push("HOW THIS TOOL BEHAVES");
+  for (const note of report.notes) {
+    lines.push(`  ${note.title}`);
+    lines.push(...wrap(note.body, 96, "    "));
+    lines.push("");
+  }
+
+  lines.push("Flags and examples for one command: i-plane <command> --help");
+  return lines.join("\n");
+};
+
+export interface CommandHelp {
+  readonly command: Command;
+}
+
+export const formatCommandHelp = (help: CommandHelp): string => {
+  const { command } = help;
+  const lines: string[] = [`i-plane ${label(command)}`, "", ...wrap(command.summary, 96, "  ")];
+
+  if (command.alias !== undefined) {
+    lines.push("", `  alias: ${command.alias}`);
+  }
+
+  if (command.options !== undefined && command.options.length > 0) {
+    lines.push("", "OPTIONS");
+    lines.push(
+      ...printColumns(
+        command.options.map((option) => ({
+          name: option.value === undefined ? option.flag : `${option.flag} ${option.value}`,
+          text: option.summary,
+        })),
+      ),
+    );
+  }
+
+  if (command.examples !== undefined && command.examples.length > 0) {
+    lines.push("", "EXAMPLES");
+    for (const example of command.examples) lines.push(`  ${example}`);
+  }
+
+  if (command.next !== undefined && command.next.length > 0) {
+    lines.push("", "USUALLY NEXT");
+    for (const step of command.next) lines.push(`  ${step}`);
+  }
+
+  return lines.join("\n");
+};
+
+/**
+ * Printed when a call is missing something. A bare complaint makes the caller
+ * guess; this shows the real invocation and what narrowing is available, so the
+ * second attempt is informed rather than another guess.
+ */
+export const formatHint = (command: Command, problem: string): string => {
+  const lines = [problem, "", `  i-plane ${label(command)}`];
+
+  if (command.examples !== undefined && command.examples.length > 0) {
+    lines.push("");
+    for (const example of command.examples) lines.push(`  ${example}`);
+  }
+
+  const narrowing = (command.options ?? []).filter(
+    (option) => option.flag !== "--json" && option.value !== undefined,
+  );
+  if (narrowing.length > 0) {
+    lines.push("", "  flags:");
+    lines.push(
+      ...printColumns(
+        narrowing.map((option) => ({
+          name: `${option.flag} ${option.value}`,
+          text: option.summary,
+        })),
+        "    ",
+      ),
+    );
+  }
+
+  lines.push("", `  full help: i-plane ${command.name} --help`);
   return lines.join("\n");
 };

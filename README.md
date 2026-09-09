@@ -8,14 +8,6 @@ this tool is built for a coding agent reading the output, not for a browser
 rendering it.
 
 ```
-$ i-plane
-WORKSPACE cloud  https://plane.example.com
-
-PROJECTS
-  CLOUD  cloud — 7 work items, 2 cycles, 3 modules
-
-Next: i-plane list <PROJECT>   Map: i-plane guide
-
 $ i-plane list CLOUD --state started
 CLOUD-4  Create and assign work items [high] (In Progress)
 CLOUD-5  Visualize your work (In Progress)
@@ -58,10 +50,13 @@ The token is an API key from **Workspace settings → API tokens**.
 
 ## Commands
 
-Run `i-plane guide` for the map and the usual order of work. Short aliases exist
-for what fingers type: `ls`, `new`, `set`, `rm`, `find`.
+`i-plane` with no arguments prints the guide: the command map, the usual order of
+work, and how the tool behaves. `i-plane <command> --help` gives that command's
+flags and real examples. Short aliases exist for what fingers type: `ls`, `new`,
+`set`, `rm`, `find`.
 
 ```
+summary               projects in the workspace and how full they are
 list [project]        work items, one line each      --state --priority --limit
 show <ID>             one work item
 search <text>         across the whole workspace
@@ -88,7 +83,9 @@ then ignores them. So the client narrows rows itself rather than trusting a
 server-side filter that silently did nothing.
 
 **Nothing ever prompts.** A CLI that waits for input hangs an agent forever.
-A missing argument is an error that names what was expected.
+A missing argument is an error that names what was expected and answers with that
+command's own examples and narrowing flags, so the second attempt is informed
+rather than another guess.
 
 **Exit codes are distinguishable.** `2` means the call was wrong, `1` means Plane
 said no or could not be reached. Branch on that instead of parsing text.
