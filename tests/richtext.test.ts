@@ -72,6 +72,38 @@ describe("code is never rewritten", () => {
   });
 });
 
+describe("lists with more than one paragraph", () => {
+  test("a continuation paragraph stays inside its item", () => {
+    /*
+     * It used to keep turndown's four-space padding, which renders as a code
+     * block rather than a paragraph. Blank lines between items are expected —
+     * an item holding a paragraph makes the list loose — so what is checked is
+     * the indentation and that nothing became code.
+     */
+    const result = round("1. step\n   - nested\n\n   continuation\n2. second");
+    expect(result).toContain("\n   continuation");
+    expect(result).not.toContain("\n    continuation");
+    expect(result).not.toContain("```");
+    expect(round(result)).toBe(result);
+  });
+
+  test("blank lines between items carry no trailing spaces", () => {
+    const result = round("1. step\n\n   continuation\n2. second");
+    for (const line of result.split("\n")) {
+      expect(line).toBe(line.trimEnd());
+    }
+  });
+});
+
+describe("fences guard what is inside them", () => {
+  test("a shorter fence inside a longer one closes nothing", () => {
+    // A three-backtick line inside a four-backtick block ended the guard, and
+    // list tightening then rewrote the stored example.
+    const source = "````\n```\n-   keep spacing\n```\n````";
+    expect(round(source)).toBe(source);
+  });
+});
+
 describe("tables keep their shape", () => {
   test("a cell with block content stays one row", () => {
     const markdown = htmlToMarkdown(
@@ -80,6 +112,29 @@ describe("tables keep their shape", () => {
     );
     expect(markdown.split("\n")).toHaveLength(3);
     expect(markdown).toContain("| first second | z |");
+  });
+
+  test("uppercase tags are handled like any other", () => {
+    expect(htmlToMarkdown("<TABLE><TR><TD>A</TD><TD>B</TD></TR></TABLE>")).toBe(
+      "| A | B |\n| --- | --- |",
+    );
+  });
+
+  test("a caption survives as text above the table", () => {
+    const markdown = htmlToMarkdown(
+      "<table><caption>Nodes</caption><tbody><tr><td>A</td><td>B</td></tr></tbody></table>",
+    );
+    expect(markdown).toContain("Nodes");
+    expect(markdown).toContain("| A | B |");
+    expect(markdown).not.toContain("<table");
+  });
+
+  test("a header appearing in a later row does not count as one", () => {
+    const markdown = htmlToMarkdown(
+      "<table><tbody><tr><td>A</td></tr><tr><th>B</th></tr></tbody></table>",
+    );
+    expect(markdown).not.toContain("<table");
+    expect(markdown.split("\n")[0]).toBe("| A |");
   });
 
   test("a table without a header row still becomes a table", () => {

@@ -113,16 +113,25 @@ const tightenLists = (markdown: string): string => {
        * the marker that was rewritten above, or four spaces of turndown padding
        * become eight and the paragraph renders as a code block.
        */
-      const open = stack[stack.length - 1];
-      const indented = /^(\s+)(\S.*)$/.exec(line);
-      if (open !== undefined && indented !== null && (indented[1] ?? "").length > open.source) {
-        out.push(`${" ".repeat(open.childIndent)}${indented[2] ?? ""}`);
-        continue;
-      }
+      // A line of nothing but spaces is a blank line. turndown pads them to the
+      // list indentation, which reads as trailing whitespace in stored text.
       if (line.trim() === "") {
-        out.push(line);
+        out.push("");
         continue;
       }
+
+      const indented = /^(\s+)(\S.*)$/.exec(line);
+      if (indented !== null && stack.length > 0) {
+        const width = (indented[1] ?? "").length;
+        // Belongs to the innermost item it actually sits inside, so a paragraph
+        // under "1. " lines up with that item's text rather than its child's.
+        const owner = [...stack].reverse().find((frame) => width > frame.source);
+        if (owner !== undefined) {
+          out.push(`${" ".repeat(owner.childIndent)}${indented[2] ?? ""}`);
+          continue;
+        }
+      }
+
       // Anything else ends the list.
       if (indented === null) stack.length = 0;
       out.push(line);

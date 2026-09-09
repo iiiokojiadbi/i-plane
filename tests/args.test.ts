@@ -136,6 +136,12 @@ describe("proxy exclusion follows curl", () => {
     expect(isExcluded("example.com.")).toBe(true);
   });
 
+  test("a trailing dot on the rule is the same name too", () => {
+    // Claimed fixed once while the replacement had silently not applied.
+    process.env.NO_PROXY = "example.com.";
+    expect(isExcluded("example.com")).toBe(true);
+  });
+
   test("a CIDR rule matches addresses inside it", () => {
     process.env.NO_PROXY = "10.0.0.0/8";
     expect(isExcluded("10.1.2.3")).toBe(true);

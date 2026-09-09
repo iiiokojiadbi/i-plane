@@ -45,7 +45,7 @@ import { fail, guardSecret, printValue } from "./output.ts";
 import { findCommand, GLOBAL_FLAGS, knownFlags } from "./registry.ts";
 import { listProjects } from "./resolve.ts";
 
-const VERSION = "1.0.1";
+const VERSION = "1.0.2";
 
 /** Short forms are what fingers type; long ones are what a reader understands. */
 const ALIASES: Readonly<Record<string, string>> = {
