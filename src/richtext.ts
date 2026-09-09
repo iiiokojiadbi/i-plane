@@ -174,6 +174,8 @@ const inlineToMarkdown = (html: string): string =>
 export const htmlToMarkdown = (html: string | null | undefined): string => {
   if (html == null || html.trim() === "") return "";
   let text = html;
+  // Placeholders live in the Unicode private use area: a real description never
+  // contains these, and unlike a NUL they are not control characters.
   const blocks: string[] = [];
 
   // Code blocks are pulled out first and restored last: nothing else may touch them.
@@ -181,7 +183,7 @@ export const htmlToMarkdown = (html: string | null | undefined): string => {
     /<pre[^>]*>\s*<code(?:\s+class="language-(\w+)")?[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/g,
     (_, language: string | undefined, body: string) => {
       blocks.push(`\`\`\`${language ?? ""}\n${decodeEntities(body).replace(/\n$/, "")}\n\`\`\``);
-      return `\u0000${blocks.length - 1}\u0000`;
+      return `\uE000${blocks.length - 1}\uE000`;
     },
   );
 
@@ -199,7 +201,7 @@ export const htmlToMarkdown = (html: string | null | undefined): string => {
       ...rows.slice(1).map((row) => `| ${row.join(" | ")} |`),
     ];
     blocks.push(lines.join("\n"));
-    return `\u0000${blocks.length - 1}\u0000`;
+    return `\uE000${blocks.length - 1}\uE000`;
   });
 
   // Ordered lists are numbered back, not turned into bullets: "step 2" in a
@@ -211,7 +213,7 @@ export const htmlToMarkdown = (html: string | null | undefined): string => {
       return `\n${counter}. ${inlineToMarkdown(item)}`;
     });
     blocks.push(items.replace(/<[^>]+>/g, "").trim());
-    return `\u0000${blocks.length - 1}\u0000`;
+    return `\uE000${blocks.length - 1}\uE000`;
   });
 
   text = text
@@ -229,7 +231,7 @@ export const htmlToMarkdown = (html: string | null | undefined): string => {
 
   text = inlineToMarkdown(text);
   text = text.replace(
-    /\u0000(\d+)\u0000/g,
+    /\uE000(\d+)\uE000/g,
     (_, index: string) => `\n${blocks[Number(index)] ?? ""}\n`,
   );
 

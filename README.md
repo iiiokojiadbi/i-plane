@@ -68,8 +68,29 @@ delete <ID> --yes     delete; refuses without --yes
 projects, states, labels, members, whoami, config, guide
 ```
 
-Work items are addressed the way people say them — `CLOUD-8`. Projects accept an
-identifier (`CLOUD`), a name, or a unique name prefix.
+Work items are addressed the way people say them — `CLOUD-8`, resolved in one
+request. Projects accept an identifier (`CLOUD`), a name, or a unique name prefix;
+an ambiguous prefix is reported rather than guessed.
+
+Descriptions are Markdown in both directions:
+
+````bash
+i-plane create --project CLOUD "Fix the resolver" --description '## Steps
+
+```bash
+dig +short example.com @127.0.0.1
+```
+
+| Node | Role   | Status |
+| ---- | ------ | ------ |
+| pi5  | DNS    | broken |
+
+1. check the cache
+2. check the routes'
+````
+
+`show` prints it back as Markdown — code fences keep their language, tables stay
+tables, ordered lists stay numbered.
 
 Every command takes `--json` and then prints the model behind the output, for
 when all the fields do matter.
@@ -81,6 +102,14 @@ when all the fields do matter.
 the wire — but accepts `state_group`, `priority` and `order_by` with a 200 and
 then ignores them. So the client narrows rows itself rather than trusting a
 server-side filter that silently did nothing.
+
+**A list is complete unless it says otherwise.** `list` returns every work item of
+the project. `--limit` exists but is not the usual path, and when it cuts the list
+the last line says how many rows were hidden — a truncated list otherwise looks
+exactly like a complete one.
+
+**Descriptions are Markdown in both directions.** Plane stores HTML; this tool
+translates at the edges, so neither side has to write or read markup.
 
 **Nothing ever prompts.** A CLI that waits for input hangs an agent forever.
 A missing argument is an error that names what was expected and answers with that
@@ -95,6 +124,20 @@ said no or could not be reached. Branch on that instead of parsing text.
 resolver. If a proxy applies and `undici` is installed, it is used; otherwise the
 command re-runs once with `NODE_USE_ENV_PROXY=1`. `NO_PROXY` is honoured. On a
 plain network none of this runs and nothing is installed.
+
+## Releasing
+
+Publishing is irreversible — a version cannot be reused, and a tarball that shipped
+too much stays in every mirror. So the release script does everything except
+publish, and prints the tarball contents file by file:
+
+```bash
+node scripts/release.mjs              # types, lint, build, smoke test, contents
+node scripts/release.mjs --publish    # the same, then upload
+```
+
+It refuses a version that is already in the registry, and checks that the built
+command actually starts before anything is uploaded.
 
 ## License
 

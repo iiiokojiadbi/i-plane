@@ -45,7 +45,7 @@ import { fail, printValue } from "./output.ts";
 import { findCommand } from "./registry.ts";
 import { listProjects } from "./resolve.ts";
 
-const VERSION = "0.1.0";
+const VERSION = "1.0.0";
 
 /** Short forms are what fingers type; long ones are what a reader understands. */
 const ALIASES: Readonly<Record<string, string>> = {

@@ -1,6 +1,6 @@
 {
   "name": "i-plane",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "CLI \u0434\u043b\u044f Plane \u0441 \u043f\u043b\u043e\u0442\u043d\u044b\u043c \u0432\u044b\u0432\u043e\u0434\u043e\u043c \u043f\u043e\u0434 \u0430\u0433\u0435\u043d\u0442\u0430",
   "type": "module",
   "license": "MIT",
@@ -20,10 +20,11 @@
   },
   "packageManager": "bun@1.4.0",
   "scripts": {
-    "build": "bun build src/cli.ts --target=node --outfile=dist/cli.js --minify",
+    "build": "bun build src/cli.ts --target=node --outfile=dist/cli.js --minify --external undici",
     "check": "tsc --noEmit",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
