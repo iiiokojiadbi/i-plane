@@ -13,5 +13,8 @@
     "noUncheckedIndexedAccess": true,
     "erasableSyntaxOnly": true
   },
+  // Tests are type-checked by `bun test`, which knows its own globals. Pulling
+  // bun-types in here instead collides with @types/node 24 inside the library
+  // itself, and a type error in someone else's declarations is not a signal.
   "include": ["src", "types"]
 }

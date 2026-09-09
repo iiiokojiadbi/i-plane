@@ -48,6 +48,13 @@ console.log("checking lint and format...");
 run("./node_modules/.bin/biome", ["check", "."], { stdio: "inherit" });
 
 /*
+ * Tests are part of the gate, not a habit. Every case in them is a bug that
+ * shipped once; running them here is what stops the second time.
+ */
+console.log("running tests...");
+run("bun", ["test"], { stdio: "inherit" });
+
+/*
  * dist is emptied first. Everything under it is eligible for packaging, so a
  * file left from an experiment ships to the registry — where it stays, in every
  * mirror, for as long as the version exists.
