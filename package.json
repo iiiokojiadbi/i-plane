@@ -1,0 +1,33 @@
+{
+  "name": "i-plane",
+  "version": "0.0.0",
+  "description": "CLI для Plane с плотным выводом под агента",
+  "type": "module",
+  "license": "MIT",
+  "author": "iiiokojiadbi <iiiokojiadbi@yandex.ru>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iiiokojiadbi/i-plane.git"
+  },
+  "bin": {
+    "i-plane": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "bun@1.4.0",
+  "scripts": {
+    "build": "bun build src/cli.ts --target=node --outfile=dist/cli.js --minify",
+    "check": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@types/node": "24.13.4",
+    "typescript": "7.0.2"
+  }
+}

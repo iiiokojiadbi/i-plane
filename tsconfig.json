@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    // TypeScript 7: strict, target и module уже имеют разумные умолчания,
+    // задаем только то, что отличается от них.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "noUncheckedIndexedAccess": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src"]
+}
