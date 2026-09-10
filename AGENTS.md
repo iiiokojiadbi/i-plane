@@ -1,94 +1,179 @@
 # Working on this repository
 
-Read this before changing anything here. It is not documentation of what the tool
-does — that is `README.md` — it is what breaks when the rules below are ignored.
+Read this before changing the CLI. README.md is the short package introduction;
+`i-plane guide` and command help explain usage. `docs/api-coverage.md` records the
+supported API surface, compatibility details and development checks.
 
-## What this is
+## Purpose
 
-A CLI for [Plane](https://plane.so) whose caller is a coding agent, not a person
-at a terminal. Plane's REST answer for seven work items is ~6,500 tokens of JSON;
-this prints ~145 tokens of lines. Every rule below follows from that one fact.
+A Plane CLI for coding agents and automation. Compact, predictable output is a
+product requirement: callers should not need large REST responses or an
+interactive terminal to understand and update their work.
 
 ## Authorship
 
-Written by Claude (Anthropic) with the repository owner. The owner decides what
-gets built and what ships; the model writes the code, runs the checks, and
-reports what it finds — including when the finding is its own bug.
+Developed by the repository owner with contributions from Claude (Anthropic)
+and Codex (OpenAI). Record authorship per commit and preserve each collaborator's
+credit. The repository owner decides the scope and approves releases.
 
 ## Invariants
 
-Breaking one of these is a bug even when tests pass.
+**Nothing prompts.** Missing arguments and invalid values raise `UsageError`
+with an actionable hint. Never wait for interactive input.
 
-**Nothing prompts, ever.** A CLI that waits for input hangs an agent forever. A
-missing argument is a `UsageError` naming what was expected; `src/commands/guide.ts`
-turns it into a hint with that command's real examples.
+**Exit codes are a contract.** Use `2` for an invalid call and `1` for an API or
+connection failure. Do not classify a transport failure as invalid user input.
 
-**Exit codes are a contract.** `2` the call was wrong, `1` Plane refused or was
-unreachable. Callers branch on the code instead of parsing text, so a
-misclassified error is worse than a vague message.
+**Every command supports JSON.** Build an output model and pass it through
+`printValue` in `src/output.ts`. Text and JSON must describe the same result.
+Guide/help models include global options and usage notes as well as commands.
 
-**`--json` is never optional.** Commands build a model and hand it to a formatter;
-`printValue` in `src/output.ts` decides between them. Print directly and you have
-silently dropped `--json` for that command.
+**The registry owns the CLI contract.** `src/registry.ts` declares command names,
+aliases, arguments, options, required markers, examples, usage notes and next
+steps. The parser derives value flags from it. Online handlers live in
+`src/dispatch.ts`; the registry and handler table must agree in both directions.
+Required markers document the contract; handlers still validate the arguments.
 
-**`src/registry.ts` is the single source for commands.** It feeds the guide, every
-`<command> --help`, and the hint on a failed call — and it is what rejects unknown
-flags. Add a flag to a command without adding it there and the CLI will refuse it.
+**Help is part of the implementation.** A new command needs a purpose, supported
+fields, requirements, realistic examples and follow-up calls. Keep summaries
+short; put decisions and limitations in usage notes. All example flags must be
+accepted by that command. Do not advertise API/UI fields that the CLI cannot set.
+Keep README concise and point readers to `guide` and `--help` for workflows.
 
-**Never trust a server-side filter.** The list endpoint honours `fields` and
-`expand` (11 KB → 737 bytes on the wire) but accepts `state_group`, `priority` and
-`order_by` with a 200 and ignores them. Narrowing happens in `src/commands/issues.ts`.
+**Never trust a server-side filter without checking it.** Use `fields`, `expand`
+and pagination to limit wire size while collecting all pages. The work item
+endpoint can accept state, priority and ordering filters without applying them;
+those filters are handled in the client. Check behavior, not only HTTP status.
 
-**Never let the token reach text.** `redact` in `src/client.ts` guards every error
-path; `maskToken` guards `config`. Node puts an offending header value into its
-own error message, and a server can echo a key back in an error body.
+**Never let a token escape.** Register `guardSecret` before diagnostics. All
+output goes through the guards in `src/output.ts`; client errors are redacted,
+and config output uses `maskToken`. Redact before truncating or formatting.
+A server response or a native error can echo credentials back.
 
-**Pin versions exactly.** A range once meant the tree tested here and the tree a
-user installs were different — undici, `^7.16.0` against 8.10.2 installed.
+**A successful write stays successful.** Resolve and validate inputs before
+writing. Do not report a successful mutation as failed because an optional
+follow-up read or setup step failed. Return the created identifier and a clear
+warning with a recovery command. Do not automatically retry uncertain writes.
 
-## Ground already lost once
+**Markdown has a defined scope.** Work item and intake descriptions, and comment
+bodies, use Markdown converted at the API boundary. Project, label, state, cycle
+and module descriptions are plain text. Keep the established `markdown-it` and
+`turndown` conversion; raw HTML must remain escaped in Markdown input.
 
-Twenty-one findings came out of one review. These are the ones worth remembering:
+**Runtime and dependency claims must agree.** Support Node 22.21+ on the 22.x
+line or Node 24+. Keep README and `package.json` engines consistent. Undici 8.x
+requires Node 22.19+; the native proxy fallback requires Node 22.21 or Node 24.
+Pin dependencies exactly and keep optional `undici` external to the bundle.
+Do not infer minimum-version compatibility from a build on a newer runtime.
 
-| What happened | Why |
-|---|---|
-| ` ```c++ ` hung the process forever | a fence pattern that refused a line without consuming it |
-| `--yes=false` deleted a work item | a switch tested for presence, not value |
-| a misspelled `--priority` returned an unfiltered list, exit 0 | no flag validation |
-| the API token appeared in an error message | masking guarded one command, not the error paths |
-| a description lost `<div>` inside inline code | entity decoding followed by tag stripping |
+## API behavior that must survive changes
 
-The Markdown conversion was hand-written and lost five ways at once. It now uses
-`markdown-it` and `turndown`. `markdown-it` rather than `marked` for one reason:
-with `html:false` it escapes raw HTML instead of passing `<img src=x onerror=…>`
-into other people's browsers.
+- Project names reject special characters, including hyphens. Validate before
+  the creation request. API routes and defaults must be checked on the target
+  server; newer UI documentation can describe different behavior.
+- `--label` merges with existing labels; `--labels` replaces them. Plane replaces
+  the whole labels array. Read-modify-write can still race with another editor.
+- Resolve readable work item references and names before writes. Reject ambiguous
+  matches, and validate project membership for bulk cycle/module assignment.
+- `project create --intake` must initialize the queue with a project PATCH.
+  Setting the creation flag alone can leave a missing queue and cause HTTP 500.
+- Cycle updates preserve the existing owner when `--owner` is absent. Some
+  servers otherwise default ownership to the requesting user.
+- Cycle dates must be supplied or cleared together, including `none`. Format
+  their timestamps in the project timezone; retain raw timestamps in JSON.
+- A work item has one cycle but can belong to several modules. Cycle transfer
+  moves unfinished work and leaves completed/cancelled work in the source.
+- Expired snoozes may disappear from intake GET and normal triage lookup.
+  Intake update/delete by work item UUID must not require a preliminary GET.
+  If a readable reference cannot resolve, explain how to use saved `issueId`.
+- Intake status is separate from work item state. Acceptance moves triage work
+  to the project default state on the supported API path. Removing an accepted
+  intake entry keeps the work item; removing an unaccepted entry deletes it too.
+
+Regression history also includes infinite Markdown fence parsing, lost inline
+HTML inside code, ignored unknown flags, and `--yes=false` confirming deletion.
+Preserve coverage for these cases when refactoring.
 
 ## Checks
 
 ```bash
-bun test                              # every case is a bug that shipped once
-./node_modules/.bin/tsc --noEmit      # src and types; tests are checked by bun
+bun test
+./node_modules/.bin/tsc --noEmit
 ./node_modules/.bin/biome check .
-node scripts/release.mjs              # the full gate, without publishing
+node scripts/release.mjs
 ```
 
-Tests are deliberately not in `tsc`'s `include`: pulling `bun-types` in collides
-with `@types/node` inside the library's own declarations, and a type error in
-someone else's file says nothing about this code.
+Tests cover regressions, registry/handler agreement, executable help examples,
+request payloads, output and errors. A test that only accepts any exception or
+checks that a function was called does not establish correct behavior.
 
-## Testing against a live instance
+TypeScript checks `src` and `types`; tests run under Bun. Do not add `bun-types`
+to the project's TypeScript compilation just to include tests: its declarations
+can conflict with `@types/node`. Exercise the built Node entry point too.
 
-Credentials are at `~/.config/plane/credentials` and the CLI reads them itself, so
-`node dist/cli.js list CLOUD` works with no arguments. Delete anything you create:
+## Live checks
+
+The CLI reads `~/.config/plane/credentials` itself. Keep secrets out of command
+arguments and logs where possible. Use the local build when checking new code:
 
 ```bash
-node dist/cli.js delete CLOUD-42 --yes
+bun run build
+node dist/cli.js list CLOUD
 ```
 
-## Releasing
+Prefer a short, targeted scenario for the behavior changed. Use a temporary
+project for writes and remove it afterwards. Do not change working project data
+as test fixtures. Preserve a created project's identifier if cleanup fails.
 
-Publishing is irreversible — a version cannot be reused, and a tarball that
-shipped too much stays in every mirror. `node scripts/release.mjs` does
-everything except publish; `--publish` is the only path to `npm publish`. The gate
-empties `dist`, runs the checks, smoke-tests the built command, enforces package
-contents and size, and refuses when the registry cannot be reached.
+The full scripts `scripts/acceptance.mjs --live` and
+`scripts/planning-acceptance.mjs --live` use real CLI commands and clean up their
+projects in `finally`. They take several minutes because they space requests.
+Do not repeat both scripts for a documentation edit or a narrow fix that can be
+verified with a focused check. Respect the API request budget and use bounded,
+observable waits. A forced termination can interrupt cleanup.
+
+`EPERM`/`EACCES` before an HTTP response indicates an operating-system permission
+failure. Check the selected proxy route and sandbox network access before
+changing credentials or application code. An installed CLI can also differ from
+the local build: check its version before diagnosing missing commands.
+
+## Releases and tracking
+
+Keep `package.json` and `src/cli.ts` versions in sync. The release gate empties
+`dist`, runs checks, builds, smoke-tests the command, validates the exact package
+contents and size, and checks registry availability. Changes to shipped files
+must update both `package.json` files and the gate's allowlist.
+
+Publishing is irreversible. `node scripts/release.mjs` does not publish;
+`--publish` is the publishing path. Obtain authorization for publication and
+reuse it within the authorized release rather than asking repeatedly.
+
+A successful npm upload can return HTTP 202 while registry processing continues.
+Do not republish the same version or treat a transient post-upload 404 as a
+failed upload. Distinguish submission from public availability, use short bounded
+checks, and verify the published version and `latest` tag before claiming both
+are available.
+
+Keep project task statuses aligned with the work. Move a task into progress when
+starting, close it after its checks, and reopen it when a confirmed review finding
+invalidates completion. Report whether a change is local, installed or published;
+these are separate states. Keep commits and public metadata provider-agnostic.
+
+## Page command invariants
+
+Page commands use SessionClient, never the API-key client. Load Yjs, the live
+provider and WebSocket dependencies lazily; keep their exact versions external
+in both build paths. Session cookies and passwords join the API token in the
+secret guard, including old cookies after a refresh.
+
+Live success means acknowledged delivery, not a database commit. Never replay a
+mutation automatically. Complete asynchronous conversion before resolving a
+block anchor and checking its content fingerprint inside one transaction. Read
+commands never stamp. Only page stamp assigns missing top-level anchors.
+
+--yes confirms deletion; --force bypasses a stale fingerprint; --allow-loss
+accepts reported conversion losses. These decisions must stay separate. Empty
+--block must fail before a whole-page mutation can be selected.
+
+Page fixtures and wire tests live under tests/page*. Unsupported rich content
+must remain visible or produce an explicit loss warning.
