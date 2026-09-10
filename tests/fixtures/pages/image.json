@@ -1,0 +1,32 @@
+{
+  "markdown": "![diagram](https://example.com/diagram.png)",
+  "html": "<p><image-component src=\"https://example.com/diagram.png\" alt=\"diagram\"></image-component></p>",
+  "response": {
+    "description_json": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "attrs": {
+            "textAlign": null
+          }
+        },
+        {
+          "type": "imageComponent",
+          "attrs": {
+            "src": "https://example.com/diagram.png",
+            "alt": "diagram",
+            "title": null,
+            "id": null,
+            "width": "35%",
+            "height": "auto",
+            "aspectRatio": null,
+            "alignment": "left",
+            "status": "pending"
+          }
+        }
+      ]
+    },
+    "description_binary": "AQj7lcemBgAHAQdkZWZhdWx0AwlwYXJhZ3JhcGiH+5XHpgYAAw5pbWFnZUNvbXBvbmVudCgA+5XHpgYBA3NyYwF3H2h0dHBzOi8vZXhhbXBsZS5jb20vZGlhZ3JhbS5wbmcoAPuVx6YGAQNhbHQBdwdkaWFncmFtKAD7lcemBgEFd2lkdGgBdwMzNSUoAPuVx6YGAQZoZWlnaHQBdwRhdXRvKAD7lcemBgEJYWxpZ25tZW50AXcEbGVmdCgA+5XHpgYBBnN0YXR1cwF3B3BlbmRpbmcA"
+  }
+}

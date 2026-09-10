@@ -8,54 +8,31 @@
  * because those are the things that cost a wrong call to discover.
  */
 
-import { flagBool, flagValue, type ParsedArgs, parseArgs, UsageError } from "./args.ts";
+import { flagBool, flagValue, type ParsedArgs, parseCommandArgs, UsageError } from "./args.ts";
 import { PlaneClient, PlaneError } from "./client.ts";
-import { formatCommandHelp, formatGuide, formatHint, guideReport } from "./commands/guide.ts";
 import {
-  commentIssue,
-  completeIssue,
-  createIssue,
-  deleteIssue,
-  findIssues,
-  formatDetail,
-  formatFound,
-  formatListing,
-  listIssues,
-  showIssue,
-  updateIssue,
-} from "./commands/issues.ts";
-import {
-  configReport,
-  formatConfig,
-  formatLabels,
-  formatMe,
-  formatMembers,
-  formatProjects,
-  formatStates,
-  formatSummary,
-  labelsOf,
-  membersOf,
-  statesOf,
-  summarize,
-  whoami,
-} from "./commands/workspace.ts";
-import { peekToken, resolveConfig } from "./config.ts";
+  formatCommandHelp,
+  formatGlobalOptions,
+  formatGuide,
+  formatHint,
+  guideReport,
+} from "./commands/guide.ts";
+import { configReport, formatConfig } from "./commands/workspace.ts";
+import { peekToken, resolveConfig, resolveSessionConfig, sessionSettings } from "./config.ts";
+import { dispatchCommand } from "./dispatch.ts";
 import { needsProxy, proxyFetch, reExecWithProxy } from "./http.ts";
 import { fail, guardSecret, printValue } from "./output.ts";
-import { findCommand, GLOBAL_FLAGS, knownFlags } from "./registry.ts";
-import { listProjects } from "./resolve.ts";
+import { dispatchPageCommand, isPageCommand } from "./page-dispatch.ts";
+import {
+  commandFamily,
+  findCommand,
+  GLOBAL_FLAGS,
+  GLOBAL_OPTIONS,
+  knownFlags,
+} from "./registry.ts";
+import { guardCachedSessions, inspectSession, SessionClient } from "./session.ts";
 
-const VERSION = "1.0.2";
-
-/** Short forms are what fingers type; long ones are what a reader understands. */
-const ALIASES: Readonly<Record<string, string>> = {
-  ls: "list",
-  new: "create",
-  set: "update",
-  rm: "delete",
-  find: "search",
-  ps: "projects",
-};
+const VERSION = "1.2.0";
 
 /** Remembered so a failure can be answered with that command's own hint. */
 let current: string | undefined;
@@ -73,11 +50,16 @@ const rejectUnknownFlags = (command: string | undefined, args: ParsedArgs): void
      * short-circuiting here let them accept anything: `help --pirority` exited
      * 0, teaching the caller that the flag exists.
      */
-    if (command === "help" || command === "version") {
+    if (
+      command === undefined ||
+      command === "help" ||
+      command === "version" ||
+      commandFamily(command).length > 0
+    ) {
       const unknown = [...args.flags.keys()].filter((flag) => !GLOBAL_FLAGS.includes(flag));
       if (unknown.length > 0) {
         throw new UsageError(
-          `${command} does not take ${unknown.map((flag) => `--${flag}`).join(", ")}.`,
+          `${command ?? "i-plane"} does not take ${unknown.map((flag) => `--${flag}`).join(", ")}.`,
         );
       }
     }
@@ -94,22 +76,47 @@ const rejectUnknownFlags = (command: string | undefined, args: ParsedArgs): void
 
 /** Commands that never touch the network, so they work before configuration exists. */
 const runOffline = (args: ParsedArgs, json: boolean): boolean => {
-  const raw = args.path[0];
-  const command = raw === undefined ? undefined : (ALIASES[raw] ?? raw);
+  const raw = args.path.length === 0 ? undefined : args.path.join(" ");
+  const command = raw === undefined ? undefined : (findCommand(raw)?.name ?? raw);
   // Offline commands validate their flags too: `guide --pirority urgent`
   // exiting 0 teaches the caller that the flag exists.
   rejectUnknownFlags(command, args);
+
+  if (command !== undefined && commandFamily(command).length > 0) {
+    const commands = commandFamily(command);
+    if (flagBool(args, "help")) {
+      printValue(
+        { commands, globalOptions: GLOBAL_OPTIONS },
+        json,
+        (value) =>
+          `${value.commands.map((entry) => formatCommandHelp({ command: entry }, false)).join("\n\n")}\n\n${formatGlobalOptions(value.globalOptions)}`,
+      );
+      return true;
+    }
+    throw new UsageError(
+      `Expected ${command} <${commands.map((entry) => entry.name.split(" ")[1]).join("|")}>. Run i-plane ${command} --help.`,
+    );
+  }
+  if (
+    command !== undefined &&
+    command !== "help" &&
+    command !== "version" &&
+    findCommand(command) === undefined
+  ) {
+    const family = commandFamily(command.split(" ")[0] ?? "");
+    throw new UsageError(
+      `No command "${command}". ${family.length ? `Available commands: ${family.map((entry) => entry.name).join(", ")}. Run i-plane ${command.split(" ")[0]} --help.` : "Run i-plane for the map."}`,
+    );
+  }
 
   // No arguments at all: the guide, not a question nobody asked.
   if (command === undefined && !flagBool(args, "version")) {
     printValue(guideReport(), json, formatGuide);
     return true;
   }
-  if (command === "guide" || flagBool(args, "help") === false) {
-    if (command === "guide") {
-      printValue(guideReport(), json, formatGuide);
-      return true;
-    }
+  if (command === "guide") {
+    printValue(guideReport(), json, formatGuide);
+    return true;
   }
   if (command === "version" || flagBool(args, "version")) {
     printValue({ version: VERSION }, json, (v) => v.version);
@@ -121,7 +128,9 @@ const runOffline = (args: ParsedArgs, json: boolean): boolean => {
   if (command !== undefined && flagBool(args, "help")) {
     const known = findCommand(command);
     if (known !== undefined) {
-      printValue({ command: known }, json, (value) => formatCommandHelp(value));
+      printValue({ command: known, globalOptions: GLOBAL_OPTIONS }, json, (value) =>
+        formatCommandHelp(value),
+      );
       return true;
     }
   }
@@ -133,7 +142,7 @@ const runOffline = (args: ParsedArgs, json: boolean): boolean => {
 };
 
 const main = async (): Promise<void> => {
-  const args = parseArgs(process.argv.slice(2), 1);
+  const args = parseCommandArgs(process.argv.slice(2));
   const json = flagBool(args, "json");
 
   /*
@@ -146,42 +155,67 @@ const main = async (): Promise<void> => {
     configPath: flagValue(args, "config"),
   });
   if (early !== undefined) guardSecret(early);
+  const settings = sessionSettings(
+    { configPath: flagValue(args, "config") },
+    flagValue(args, "session-cache"),
+  );
+  if (settings.password) guardSecret(settings.password.value);
+  await guardCachedSessions(settings.cacheDirectory);
 
   if (runOffline(args, json)) return;
 
-  const config = resolveConfig({
-    url: flagValue(args, "url"),
-    token: flagValue(args, "token"),
-    workspace: flagValue(args, "workspace"),
-    configPath: flagValue(args, "config"),
-  });
+  const commandName = args.path.join(" ");
+  if (isPageCommand(commandName)) {
+    current = commandName;
+    const pageConfig = resolveSessionConfig(
+      {
+        url: flagValue(args, "url"),
+        workspace: flagValue(args, "workspace"),
+        configPath: flagValue(args, "config"),
+      },
+      flagValue(args, "session-cache"),
+    );
+    if (
+      needsProxy(pageConfig.url.value) &&
+      (await proxyFetch(pageConfig.url.value)) === undefined
+    ) {
+      const code = await reExecWithProxy(pageConfig.url.value);
+      if (code !== undefined) process.exit(code);
+    }
+    await dispatchPageCommand(commandName, new SessionClient(pageConfig), args, json);
+    return;
+  }
+
+  const config = resolveConfig(
+    {
+      url: flagValue(args, "url"),
+      token: flagValue(args, "token"),
+      workspace: flagValue(args, "workspace"),
+      configPath: flagValue(args, "config"),
+    },
+    commandName === "config",
+  );
 
   // The resolved token may differ from what was visible early on.
-  guardSecret(config.token.value);
+  if (config.token.value) guardSecret(config.token.value);
 
-  const raw = args.path[0];
-  const command = raw === undefined ? undefined : (ALIASES[raw] ?? raw);
+  const raw = args.path.length === 0 ? undefined : args.path.join(" ");
+  const command = raw === undefined ? undefined : (findCommand(raw)?.name ?? raw);
   current = command;
-
-  /*
-   * A flag this command does not know is a mistake, and a silent one: a
-   * misspelled --priority returned an unfiltered list with exit 0, which the
-   * caller cannot tell apart from a correct answer. Better to refuse.
-   */
-  const known = command === undefined ? undefined : findCommand(command);
-  if (known !== undefined) {
-    const allowed = knownFlags(known);
-    const unknown = [...args.flags.keys()].filter((flag) => !allowed.has(flag));
-    if (unknown.length > 0) {
-      const list = unknown.map((flag) => `--${flag}`).join(", ");
-      throw new UsageError(`${known.name} does not take ${list}. Its flags are listed below.`);
-    }
-  }
 
   // config comes after resolveConfig on purpose: its job is to explain what was
   // resolved, including a value that turned out to be wrong.
   if (command === "config") {
-    printValue(configReport(config), json, formatConfig);
+    const report = {
+      ...configReport(config),
+      session: await inspectSession(config.url.value, settings),
+    };
+    printValue(
+      report,
+      json,
+      (value) =>
+        `${formatConfig(value)}\nsession    ${value.session.state}\nlogin      ${value.session.login.configured ? `configured (${value.session.login.origin})` : "not configured"}\npassword   ${value.session.password.configured ? `configured (${value.session.password.origin})` : "not configured"}\ncache      ${value.session.cacheDirectory}`,
+    );
     return;
   }
 
@@ -195,60 +229,7 @@ const main = async (): Promise<void> => {
 
   const client = new PlaneClient(config);
 
-  switch (command) {
-    case "summary":
-      printValue(await summarize(client, config), json, formatSummary);
-      return;
-    case "projects":
-      printValue(await listProjects(client), json, formatProjects);
-      return;
-    case "list":
-      printValue(await listIssues(client, args), json, formatListing);
-      return;
-    case "show":
-      printValue(
-        await showIssue(client, args, config.workspace.value, config.url.value),
-        json,
-        formatDetail,
-      );
-      return;
-    case "create":
-      printValue(await createIssue(client, args), json, (row) => `created ${row.ref}  ${row.name}`);
-      return;
-    case "update":
-      printValue(
-        await updateIssue(client, args),
-        json,
-        (row) => `${row.ref}  ${row.name} (${row.state})`,
-      );
-      return;
-    case "done":
-      printValue(await completeIssue(client, args), json, (row) => `${row.ref} → ${row.state}`);
-      return;
-    case "delete":
-      printValue(await deleteIssue(client, args), json, (text) => text);
-      return;
-    case "comment":
-      printValue(await commentIssue(client, args), json, (text) => text);
-      return;
-    case "search":
-      printValue(await findIssues(client, args), json, formatFound);
-      return;
-    case "states":
-      printValue(await statesOf(client, args), json, formatStates);
-      return;
-    case "labels":
-      printValue(await labelsOf(client, args), json, formatLabels);
-      return;
-    case "members":
-      printValue(await membersOf(client), json, formatMembers);
-      return;
-    case "whoami":
-      printValue(await whoami(client), json, formatMe);
-      return;
-    default:
-      throw new UsageError(`No command "${command}". Run i-plane for the map.`);
-  }
+  await dispatchCommand(command, client, args, config, json);
 };
 
 main().catch((error: unknown) => {

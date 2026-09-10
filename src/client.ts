@@ -7,7 +7,7 @@
  */
 
 import type { Config } from "./config.ts";
-import { type FetchLike, proxyFetch } from "./http.ts";
+import { connectionRoute, type FetchLike, isConnectionDenied, proxyFetch } from "./http.ts";
 
 /*
  * Anything on its way to a human or a log passes through here first. Node puts
@@ -127,6 +127,15 @@ export class PlaneClient {
               .filter(Boolean)
               .join(" ")})`;
       clearTimeout(timeout);
+      if (isConnectionDenied(cause)) {
+        throw new PlaneError(
+          redact(
+            `Connection to ${this.config.url.value} ${connectionRoute(url.toString())} was denied by the operating system (EPERM/EACCES). ` +
+              "Check sandbox network permissions and local firewall rules. No HTTP response was received from Plane.",
+            this.config.token.value,
+          ),
+        );
+      }
       throw new PlaneError(
         redact(`Cannot reach ${this.config.url.value}: ${detail}`, this.config.token.value),
       );

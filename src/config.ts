@@ -127,7 +127,7 @@ export const peekToken = (input: ConfigInput): string | undefined => {
   return pick(input.token, ["PLANE_API_KEY", "PLANE_TOKEN"], ["PLANE_API_KEY"], file)?.value;
 };
 
-export const resolveConfig = (input: ConfigInput): Config => {
+export const resolveConfig = (input: ConfigInput, allowMissingToken = false): Config => {
   const configPath = input.configPath ?? process.env.PLANE_CONFIG ?? DEFAULT_CONFIG_PATH;
   const file = readCredentials(configPath);
 
@@ -148,14 +148,15 @@ export const resolveConfig = (input: ConfigInput): Config => {
   );
 
   if (url === undefined) throw missing("url", "PLANE_URL", "PLANE_URL", configPath);
-  if (token === undefined) throw missing("token", "PLANE_API_KEY", "PLANE_API_KEY", configPath);
+  if (token === undefined && !allowMissingToken)
+    throw missing("token", "PLANE_API_KEY", "PLANE_API_KEY", configPath);
   if (workspace === undefined) {
     throw missing("workspace", "PLANE_WORKSPACE", "PLANE_WORKSPACE", configPath);
   }
 
   return {
     url: { value: normalizeUrl(url.value, url.origin, configPath), origin: url.origin },
-    token,
+    token: token ?? { value: "", origin: "default" },
     workspace,
     configPath,
   };
@@ -164,3 +165,40 @@ export const resolveConfig = (input: ConfigInput): Config => {
 /** Never print a token; show enough to tell two apart. */
 export const maskToken = (token: string): string =>
   token.length <= 10 ? "***" : `${token.slice(0, 6)}…${token.slice(-4)}`;
+
+export interface SessionSettings {
+  readonly login?: Resolved;
+  readonly password?: Resolved;
+  readonly cacheDirectory: string;
+}
+export interface SessionConfig extends Config {
+  readonly login: Resolved;
+  readonly password: Resolved;
+  readonly cacheDirectory: string;
+}
+
+export const sessionSettings = (input: ConfigInput, cacheDirectory?: string): SessionSettings => {
+  const configPath = input.configPath ?? process.env.PLANE_CONFIG ?? DEFAULT_CONFIG_PATH;
+  const file = readCredentials(configPath);
+  return {
+    login: pick(undefined, ["PLANE_LOGIN"], ["PLANE_LOGIN"], file),
+    password: pick(undefined, ["PLANE_PASSWORD"], ["PLANE_PASSWORD"], file),
+    cacheDirectory:
+      cacheDirectory ??
+      process.env.PLANE_SESSION_CACHE ??
+      join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "i-plane", "sessions"),
+  };
+};
+
+export const resolveSessionConfig = (
+  input: ConfigInput,
+  cacheDirectory?: string,
+): SessionConfig => {
+  const settings = sessionSettings(input, cacheDirectory);
+  const config = resolveConfig(input, true);
+  if (!settings.login || !settings.password)
+    throw new UsageError(
+      `Pages need PLANE_LOGIN and PLANE_PASSWORD in the environment or ${config.configPath}. An API key is not required.`,
+    );
+  return { ...config, ...settings, login: settings.login, password: settings.password };
+};

@@ -1,0 +1,82 @@
+{
+  "markdown": "- [x] Finished\n- [ ] Pending\n  - [x] Nested",
+  "html": "<ul data-type=\"taskList\">\n<li data-type=\"taskItem\" data-checked=\"true\"> Finished</li>\n<li data-type=\"taskItem\" data-checked=\"false\"> Pending\n<ul data-type=\"taskList\">\n<li data-type=\"taskItem\" data-checked=\"true\"> Nested</li>\n</ul>\n</li>\n</ul>",
+  "response": {
+    "description_json": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "taskList",
+          "content": [
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": true
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Finished"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Pending"
+                    }
+                  ]
+                },
+                {
+                  "type": "taskList",
+                  "content": [
+                    {
+                      "type": "taskItem",
+                      "attrs": {
+                        "checked": true
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "attrs": {
+                            "textAlign": null
+                          },
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Nested"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "description_binary": "ARHU5JvECQAHAQdkZWZhdWx0Awh0YXNrTGlzdAcA1OSbxAkAAwh0YXNrSXRlbQcA1OSbxAkBAwlwYXJhZ3JhcGgHANTkm8QJAgYEANTkm8QJAwhGaW5pc2hlZCgA1OSbxAkBB2NoZWNrZWQBeIfU5JvECQEDCHRhc2tJdGVtBwDU5JvECQ0DCXBhcmFncmFwaAcA1OSbxAkOBgQA1OSbxAkPB1BlbmRpbmeH1OSbxAkOAwh0YXNrTGlzdAcA1OSbxAkXAwh0YXNrSXRlbQcA1OSbxAkYAwlwYXJhZ3JhcGgHANTkm8QJGQYEANTkm8QJGgZOZXN0ZWQoANTkm8QJGAdjaGVja2VkAXgoANTkm8QJDQdjaGVja2VkAXkA"
+  }
+}

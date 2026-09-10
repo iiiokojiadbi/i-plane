@@ -1,0 +1,69 @@
+{
+  "markdown": "- [x] first\n\n  second paragraph\n\n- [ ] third",
+  "html": "<ul data-type=\"taskList\">\n<li data-type=\"taskItem\" data-checked=\"true\">first\n<p>second paragraph</p>\n</li>\n<li data-type=\"taskItem\" data-checked=\"false\">third\n</li>\n</ul>",
+  "response": {
+    "description_json": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "taskList",
+          "content": [
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": true
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "first"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "second paragraph"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "third"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "description_binary": "AQ782eSuBgAHAQdkZWZhdWx0Awh0YXNrTGlzdAcA/NnkrgYAAwh0YXNrSXRlbQcA/NnkrgYBAwlwYXJhZ3JhcGgHAPzZ5K4GAgYEAPzZ5K4GAwVmaXJzdIf82eSuBgIDCXBhcmFncmFwaAcA/NnkrgYJBgQA/NnkrgYKEHNlY29uZCBwYXJhZ3JhcGgoAPzZ5K4GAQdjaGVja2VkAXiH/NnkrgYBAwh0YXNrSXRlbQcA/NnkrgYcAwlwYXJhZ3JhcGgHAPzZ5K4GHQYEAPzZ5K4GHgV0aGlyZCgA/NnkrgYcB2NoZWNrZWQBeQA="
+  }
+}

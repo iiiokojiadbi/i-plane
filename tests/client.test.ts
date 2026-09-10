@@ -48,9 +48,8 @@ const respond = (body: string, init: ResponseInit = {}): typeof fetch =>
 describe("the token never reaches text", () => {
   test("a body echoing the token is redacted in the error", async () => {
     const client = new PlaneClient(config());
-    const error = await withFetch(
-      respond(`server said ${TOKEN} was wrong`, { status: 500 }),
-      () => client.request("projects/").catch((cause: unknown) => cause),
+    const error = await withFetch(respond(`server said ${TOKEN} was wrong`, { status: 500 }), () =>
+      client.request("projects/").catch((cause: unknown) => cause),
     );
     expect(error).toBeInstanceOf(PlaneError);
     // The status pins this to the intended failure: a test accepting any error
@@ -63,9 +62,8 @@ describe("the token never reaches text", () => {
   test("padding before the token cannot push it past truncation", async () => {
     // The message is truncated, so redaction has to happen first.
     const client = new PlaneClient(config());
-    const error = await withFetch(
-      respond(`${"x".repeat(280)}${TOKEN}`, { status: 500 }),
-      () => client.request("projects/").catch((cause: unknown) => cause),
+    const error = await withFetch(respond(`${"x".repeat(280)}${TOKEN}`, { status: 500 }), () =>
+      client.request("projects/").catch((cause: unknown) => cause),
     );
     expect((error as PlaneError).status).toBe(500);
     expect((error as PlaneError).message).not.toContain(TOKEN.slice(0, 20));
@@ -74,9 +72,8 @@ describe("the token never reaches text", () => {
 
   test("a 200 that is not JSON does not quote the token back", async () => {
     const client = new PlaneClient(config());
-    const error = await withFetch(
-      respond(`not json, token was ${TOKEN}`, { status: 200 }),
-      () => client.request("projects/").catch((cause: unknown) => cause),
+    const error = await withFetch(respond(`not json, token was ${TOKEN}`, { status: 200 }), () =>
+      client.request("projects/").catch((cause: unknown) => cause),
     );
     expect((error as PlaneError).message).toContain("Expected JSON");
     expect((error as PlaneError).message).not.toContain(TOKEN);
@@ -278,4 +275,24 @@ describe("the registry agrees with what commands accept", () => {
       expect([...knownFlags(command)]).toContain("json");
     }
   });
+});
+
+describe("connection permission diagnostics", () => {
+  for (const code of ["EPERM", "EACCES"]) {
+    test(`${code} explains that the operating system denied the connection`, async () => {
+      const cause = new TypeError("fetch failed", {
+        cause: Object.assign(new Error("connect denied"), { code }),
+      });
+      const error = await withFetch(
+        (async () => {
+          throw cause;
+        }) as typeof fetch,
+        () => new PlaneClient(config()).request("projects/").catch((value: unknown) => value),
+      );
+      expect(error).toBeInstanceOf(PlaneError);
+      expect((error as Error).message).toContain("directly");
+      expect((error as Error).message).toContain("sandbox network permissions");
+      expect((error as Error).message).toContain("No HTTP response");
+    });
+  }
 });

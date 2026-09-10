@@ -26,19 +26,66 @@ export const printColumns = (rows: ReadonlyArray<Column>, indent = "  "): Readon
  * create, and a server echoing the key back inside a --json payload. A single
  * chokepoint cannot be forgotten at a new call site.
  */
-let secret = "";
+const secrets = new Set<string>();
 
-/** Registered once, as soon as configuration resolves. */
+/** Register credentials before use; retain old values after session refresh. */
 export const guardSecret = (value: string): void => {
-  secret = value;
+  if (value === "") {
+    secrets.clear();
+    return;
+  }
+  secrets.add(value);
+};
+
+const secretVariants = (): string[] => {
+  const variants = new Set<string>();
+  for (const secret of secrets) {
+    variants.add(secret);
+    variants.add(JSON.stringify(secret).slice(1, -1));
+    try {
+      variants.add(encodeURIComponent(secret));
+    } catch {
+      /* Raw and JSON forms still apply to malformed Unicode. */
+    }
+    variants.add(new URLSearchParams({ value: secret }).toString().slice("value=".length));
+    const html = secret
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+    variants.add(html);
+    variants.add(html.replace(/'/g, "&#39;"));
+    variants.add(html.replace(/'/g, "&apos;"));
+    for (const piece of secret.split(/\s+/)) if (piece.length >= 12) variants.add(piece);
+  }
+  return [...variants].sort((a, b) => b.length - a.length);
+};
+
+/** Ranges allow structured renderers to redact across adjacent text nodes. */
+export const secretRanges = (text: string): Array<{ start: number; end: number }> => {
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const value of secretVariants()) {
+    if (!value) continue;
+    let start = text.indexOf(value);
+    while (start >= 0) {
+      ranges.push({ start, end: start + value.length });
+      start = text.indexOf(value, start + 1);
+    }
+  }
+  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const range of ranges) {
+    const last = merged.at(-1);
+    if (last && range.start <= last.end) last.end = Math.max(last.end, range.end);
+    else merged.push({ ...range });
+  }
+  return merged;
 };
 
 export const scrub = (text: string): string => {
-  if (secret === "") return text;
-  let safe = text.split(secret).join("[token]");
-  // A token carrying whitespace reaches some error paths in pieces.
-  for (const piece of secret.split(/\s+/)) {
-    if (piece.length >= 12) safe = safe.split(piece).join("[token]");
+  let safe = text;
+  for (const value of secretVariants()) {
+    if (value !== "") safe = safe.split(value).join("[token]");
   }
   return safe;
 };

@@ -1,13 +1,10 @@
 {
   "name": "i-plane",
-  "version": "1.0.2",
-  "description": "CLI \u0434\u043b\u044f Plane \u0441 \u043f\u043b\u043e\u0442\u043d\u044b\u043c \u0432\u044b\u0432\u043e\u0434\u043e\u043c \u043f\u043e\u0434 \u0430\u0433\u0435\u043d\u0442\u0430",
+  "version": "1.2.0",
+  "description": "Compact Plane CLI for coding agents: tasks, projects, live pages, cycles, modules and intake.",
   "type": "module",
   "license": "MIT",
   "author": "iiiokojiadbi <iiiokojiadbi@yandex.ru>",
-  "contributors": [
-    "Claude (Anthropic) <noreply@anthropic.com>"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/iiiokojiadbi/i-plane.git"
@@ -17,15 +14,17 @@
   },
   "files": [
     "dist",
+    "docs/api-coverage.md",
+    "docs/pages.md",
     "AGENTS.md",
     "CLAUDE.md"
   ],
   "engines": {
-    "node": ">=20"
+    "node": "^22.21.0 || >=24.0.0"
   },
   "packageManager": "bun@1.4.0",
   "scripts": {
-    "build": "bun build src/cli.ts --target=node --outfile=dist/cli.js --minify --external undici",
+    "build": "bun build src/cli.ts --target=node --outdir=dist --splitting --entry-naming=[name].js --chunk-naming=chunks/[name]-[hash].js --minify --external undici --external yjs --external @hocuspocus/provider --external ws --external https-proxy-agent",
     "check": "tsc --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
@@ -37,14 +36,41 @@
     "@types/markdown-it": "14.2.0",
     "@types/node": "24.13.4",
     "@types/turndown": "5.0.6",
+    "@types/ws": "8.18.1",
     "typescript": "7.0.2"
   },
   "optionalDependencies": {
     "undici": "8.10.2"
   },
   "dependencies": {
+    "@hocuspocus/provider": "4.7.0",
+    "@mixmark-io/domino": "2.2.0",
+    "https-proxy-agent": "9.1.0",
     "markdown-it": "15.0.1",
+    "markdown-it-task-lists": "2.1.1",
     "turndown": "7.2.4",
-    "turndown-plugin-gfm": "1.0.2"
+    "turndown-plugin-gfm": "1.0.2",
+    "ws": "8.21.3",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.32"
+  },
+  "keywords": [
+    "plane",
+    "plane-cli",
+    "plane-so",
+    "project-management",
+    "issue-tracker",
+    "task-management",
+    "cli",
+    "coding-agent",
+    "agent-tools",
+    "automation",
+    "markdown",
+    "knowledge-base",
+    "collaborative-editing"
+  ],
+  "homepage": "https://github.com/iiiokojiadbi/i-plane#readme",
+  "bugs": {
+    "url": "https://github.com/iiiokojiadbi/i-plane/issues"
   }
 }

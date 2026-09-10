@@ -64,9 +64,8 @@ rmSync(join(root, "dist"), { recursive: true, force: true });
 
 console.log("building...");
 /*
- * undici stays external. Bundling it would pull 550 KB into a 29 KB tool and
- * quietly turn an optional dependency into a mandatory one — the import is
- * dynamic precisely so a plain network never loads it.
+ * undici stays optional and external. The live editor dependencies are external
+ * too; splitting keeps their imports behind the page command entry point.
  */
 run(
   "bun",
@@ -74,10 +73,17 @@ run(
     "build",
     "src/cli.ts",
     "--target=node",
-    "--outfile=dist/cli.js",
+    "--outdir=dist",
+    "--splitting",
+    "--entry-naming=[name].js",
+    "--chunk-naming=chunks/[name]-[hash].js",
     "--minify",
     "--external",
     "undici",
+    ...["yjs", "@hocuspocus/provider", "ws", "https-proxy-agent"].flatMap((name) => [
+      "--external",
+      name,
+    ]),
   ],
   { stdio: "inherit" },
 );
@@ -95,6 +101,15 @@ if (!built.startsWith("#!")) {
   throw new Error("dist/cli.js has no shebang; npm would install a file the shell cannot run");
 }
 console.log("smoke test: running the built command...");
+const lazyProbe = `import { registerHooks } from "node:module";
+registerHooks({resolve(specifier, context, next) {
+  if (["yjs", "@hocuspocus/provider", "ws", "https-proxy-agent"].includes(specifier))
+    throw new Error("Live dependency loaded by an offline command: " + specifier);
+  return next(specifier, context);
+}});
+process.argv = [process.execPath, ${JSON.stringify(entry)}, "page", "set", "--help"];
+await import(${JSON.stringify(entry)});`;
+run("node", ["--input-type=module", "-e", lazyProbe]);
 const guide = run("node", [entry, "guide"]);
 if (!guide.includes("HOW THIS TOOL BEHAVES")) {
   throw new Error("the built command did not print the guide");
@@ -122,11 +137,15 @@ const EXPECTED_FILES = [
   "CLAUDE.md",
   "README.md",
   "dist/cli.js",
+  "docs/api-coverage.md",
+  "docs/pages.md",
   "package.json",
 ];
 const MAX_TARBALL_KB = 200;
 const shipped = (packed.files ?? []).map((file) => file.path).sort();
-const unexpected = shipped.filter((path) => !EXPECTED_FILES.includes(path));
+const unexpected = shipped.filter(
+  (path) => !EXPECTED_FILES.includes(path) && !/^dist\/chunks\/(?:cli|page-content)-[a-z0-9]{8}\.js$/.test(path),
+);
 if (unexpected.length > 0) {
   throw new Error(`the package would ship files nobody declared: ${unexpected.join(", ")}`);
 }

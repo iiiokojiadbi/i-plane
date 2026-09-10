@@ -1,0 +1,45 @@
+{
+  "markdown": "- [x]\n- [ ]",
+  "html": "<ul data-type=\"taskList\">\n<li data-type=\"taskItem\" data-checked=\"true\"></li>\n<li data-type=\"taskItem\" data-checked=\"false\"></li>\n</ul>",
+  "response": {
+    "description_json": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "taskList",
+          "content": [
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": true
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "description_binary": "AQeFgK2XAwAHAQdkZWZhdWx0Awh0YXNrTGlzdAcAhYCtlwMAAwh0YXNrSXRlbQcAhYCtlwMBAwlwYXJhZ3JhcGgoAIWArZcDAQdjaGVja2VkAXiHhYCtlwMBAwh0YXNrSXRlbQcAhYCtlwMEAwlwYXJhZ3JhcGgoAIWArZcDBAdjaGVja2VkAXkA"
+  }
+}

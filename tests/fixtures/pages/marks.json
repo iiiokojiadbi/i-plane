@@ -1,0 +1,64 @@
+{
+  "xml": "<paragraph>plain <bold>bold</bold> <italic>italic</italic> <underline>underline</underline> <strike>strike</strike> <code>code</code> <link class=\"text-accent-secondary underline underline-offset-[3px] hover:text-accent-primary transition-colors cursor-pointer\" href=\"https://example.com\" rel=\"noopener noreferrer nofollow\" target=\"_blank\">link</link></paragraph>",
+  "delta": [
+    {
+      "insert": "plain "
+    },
+    {
+      "insert": "bold",
+      "attributes": {
+        "bold": {}
+      }
+    },
+    {
+      "insert": " "
+    },
+    {
+      "insert": "italic",
+      "attributes": {
+        "italic": {}
+      }
+    },
+    {
+      "insert": " "
+    },
+    {
+      "insert": "underline",
+      "attributes": {
+        "underline": {}
+      }
+    },
+    {
+      "insert": " "
+    },
+    {
+      "insert": "strike",
+      "attributes": {
+        "strike": {}
+      }
+    },
+    {
+      "insert": " "
+    },
+    {
+      "insert": "code",
+      "attributes": {
+        "code": {}
+      }
+    },
+    {
+      "insert": " "
+    },
+    {
+      "insert": "link",
+      "attributes": {
+        "link": {
+          "href": "https://example.com",
+          "target": "_blank",
+          "rel": "noopener noreferrer nofollow",
+          "class": "text-accent-secondary underline underline-offset-[3px] hover:text-accent-primary transition-colors cursor-pointer"
+        }
+      }
+    }
+  ]
+}

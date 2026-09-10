@@ -1,126 +1,91 @@
 # i-plane
 
-A command-line client for [Plane](https://plane.so) that prints lines instead of
-JSON dumps.
+**Plane project management from the command line.**
 
-Ask Plane's API for seven work items and it answers with twenty-nine fields
-each — about 6,500 tokens. The same seven through `i-plane` are 145. If you are
-piping work items into a coding agent, that difference is the entire point.
+Find the next task, read the discussion, update the work and keep moving.
+`i-plane` brings your [Plane](https://plane.so) workspace into the terminal,
+with compact output for coding agents and scripts.
 
+```console
+$ i-plane list APP --state started
+APP-9  Fix search indexing [urgent] (In Progress)
+APP-8  Refresh the onboarding guide [high] (In Progress)
 ```
-$ i-plane list CLOUD --state started
-CLOUD-4  Create and assign work items [high] (In Progress)
-CLOUD-5  Visualize your work (In Progress)
-```
 
-## Install
+Readable references like `APP-8`, Markdown for work item descriptions and
+comments, and `--json` whenever you need structured data. Nothing prompts for input.
+
+## What you can do
+
+- **Manage tasks:** search, create, update and complete work; set parents,
+  assignees, labels and dates; read and write comments.
+- **Set up projects:** create projects, configure workflow states and labels,
+  enable planning features, and archive finished projects.
+- **Plan delivery:** schedule work in cycles, carry unfinished tasks forward,
+  and group related work in modules that can span multiple cycles.
+- **Triage requests:** collect reports in intake, then accept, reject, snooze
+  or mark them as duplicates before committing to the work.
+- **Maintain project knowledge:** read pages, inspect live blocks and edit only
+  the section you need, with fingerprints to detect concurrent changes.
+- **Automate:** use concise lists, JSON output and distinct exit codes in
+  agent workflows and shell scripts.
+
+## Install and connect
+
+Requires **Node 22.21+ on the 22.x line, or Node 24+**.
 
 ```bash
 npm install -g i-plane
 ```
 
-Node 20 or newer.
+Create a [Plane API token](https://developers.plane.so/api-reference/introduction#authentication)
+and save these settings in `~/.config/plane/credentials`:
 
-## Set it up
-
-You need three things: the address of your Plane, an API key, and a workspace.
-The key comes from **Workspace settings → API tokens**.
-
-Supply them however suits you — flags win over environment, environment wins over
-the file:
-
-```bash
-# once, in a file
-mkdir -p ~/.config/plane && chmod 700 ~/.config/plane
-cat > ~/.config/plane/credentials <<'EOF'
+```ini
 PLANE_URL=https://plane.example.com
-PLANE_API_KEY=plane_api_…
-PLANE_WORKSPACE=my-workspace
-EOF
-chmod 600 ~/.config/plane/credentials
-
-# or per call
-i-plane list CLOUD --url https://plane.example.com --token … --workspace my-workspace
+PLANE_API_KEY=your-api-token
+PLANE_WORKSPACE=your-workspace-slug
 ```
 
-Not sure what is in effect:
+Keep the file private with `chmod 600 ~/.config/plane/credentials`.
+`i-plane config` shows the active settings with the token masked.
+Flags override environment variables, which override the credentials file.
 
-```
-$ i-plane config
-url        https://plane.example.com  (file)
-workspace  my-workspace  (env)
-token      plane_…856f  (file)
-file       /home/you/.config/plane/credentials
-```
+## Find your workflow
 
-## Use it
-
-Run `i-plane` with no arguments and it shows the command map, the usual order of
-work, and how it behaves. `i-plane <command> --help` gives one command's flags
-and real examples.
-
-```
-summary               projects and how much is in each
-list [project]        work items, one line each    --state --priority --limit
-show <ID>             one work item, description included
-search <text>         across the whole workspace
-create <title>        --project --priority --state --description
-update <ID>           --state --priority --name --description
-done <ID>             move to the first completed state
-comment <ID> <text>   add a comment
-delete <ID> --yes     delete; refuses without --yes
-projects  states  labels  members  whoami  config  guide
-```
-
-Short forms for what fingers type: `ls`, `new`, `set`, `rm`, `find`.
-
-Work items go by the name people say — `CLOUD-8`. Projects take an identifier
-(`CLOUD`), a full name, or a unique prefix of one.
-
-Every command accepts `--json` and then prints the whole model, for when you need
-ids and timestamps rather than a readable line.
-
-## Descriptions are Markdown
-
-Write them as Markdown; read them back as Markdown. Plane stores HTML, and the
-translation happens here.
-
-````bash
-i-plane create --project CLOUD "Fix the resolver" --description '## Steps
+The CLI carries its own guide. Start here:
 
 ```bash
-dig +short example.com @127.0.0.1
+i-plane guide                 # Command map and suggested workflow
+i-plane create --help         # Required flags and working examples
+i-plane module --help         # Commands for a feature area
+i-plane intake update --help  # Triage decisions and what to do next
 ```
 
-| Node | Role | Status |
-| ---- | ---- | ------ |
-| pi5  | DNS  | broken |
+Help includes usage notes, examples and **USUALLY NEXT** commands, so you can
+follow a workflow without memorizing the API. Running `i-plane` with no arguments
+also opens the guide.
 
-1. check the cache
-2. check the routes'
-````
+A typical task session:
 
-Code fences keep their language, tables stay tables, ordered lists stay numbered.
-Raw HTML in a description is escaped rather than passed through, so nothing you
-write can execute in someone else's browser.
+```bash
+i-plane summary
+i-plane list APP --state unstarted
+i-plane show APP-8 --comments
+i-plane update APP-8 --state started
+i-plane done APP-8
+```
 
-## Good to know
+Replace `APP` and `APP-8` with your project and work item references. Add `--json`
+to any command for its structured result. Exit code `2` means an invalid call;
+`1` means an API or connection failure.
 
-**A list is complete unless it says so.** `list` returns every work item in the
-project. `--limit` exists, but when it cuts the list the last line tells you how
-many rows it hid.
+For supported fields, compatibility details and development checks, see the
+[capability reference](docs/api-coverage.md).
 
-**Exit codes mean something.** `2` — the command was wrong. `1` — Plane refused or
-could not be reached. Useful in scripts.
-
-**Proxies work without configuration.** If `HTTPS_PROXY` applies to your Plane
-address, it is used; `NO_PROXY` is honoured the way curl honours it, including
-CIDR ranges. On a network without a proxy none of this runs.
-
-## Contributing
-
-`AGENTS.md` has the working rules: the invariants, the checks to run, and the
-bugs that already shipped once.
+Pages use a Plane login and password instead of an API token. See the
+[page workflow](docs/pages.md) for session setup, block edits and delivery semantics.
+`i-plane page --help` carries the same command examples into your terminal.
 
 ## License
 

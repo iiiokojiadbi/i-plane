@@ -9,10 +9,13 @@
 import { flagBool, flagNumber, flagValue, type ParsedArgs, UsageError } from "../args.ts";
 import type { PlaneClient } from "../client.ts";
 import { oneLine, printColumns, truncate, warn } from "../output.ts";
-import { findState, listStates, resolveIssue, resolveProject } from "../resolve.ts";
+import { listStates, resolveIssue, resolveProject } from "../resolve.ts";
 import { htmlToMarkdown, markdownToHtml } from "../richtext.ts";
 import type { Issue, State } from "../types.ts";
 import { priorityRank, stateGroupRank } from "../types.ts";
+import { requireChanges } from "../validation.ts";
+import { type CommentRow, commentsOf, formatComments } from "./comments.ts";
+import { issueFields } from "./issue-fields.ts";
 
 /** A work item as this CLI thinks of it: six fields, not twenty-nine. */
 export interface Row {
@@ -24,18 +27,18 @@ export interface Row {
   readonly id: string;
 }
 
-interface Expanded extends Omit<Issue, "state"> {
+export interface ExpandedIssue extends Omit<Issue, "state"> {
   readonly state: State | string;
 }
 
 const LIST_FIELDS = "id,name,sequence_id,priority,state";
 
-const stateOf = (issue: Expanded): { name: string; group: string } =>
+const stateOf = (issue: ExpandedIssue): { name: string; group: string } =>
   typeof issue.state === "object" && issue.state !== null
     ? { name: issue.state.name, group: issue.state.group }
     : { name: "?", group: "?" };
 
-const toRow = (issue: Expanded, identifier: string): Row => {
+export const issueToRow = (issue: ExpandedIssue, identifier: string): Row => {
   const state = stateOf(issue);
   return {
     ref: `${identifier}-${issue.sequence_id}`,
@@ -91,7 +94,7 @@ export const listIssues = async (client: PlaneClient, args: ParsedArgs): Promise
   // and order_by are accepted with 200 and then ignored — the answer comes back
   // whole either way. So narrowing happens here, on rows already made small.
   const limit = flagNumber(args, "limit");
-  const issues = await client.listAll<Expanded>(`projects/${project.id}/issues/`, {
+  const issues = await client.listAll<ExpandedIssue>(`projects/${project.id}/issues/`, {
     query: { fields: LIST_FIELDS, expand: "state", per_page: 100 },
   });
 
@@ -99,7 +102,7 @@ export const listIssues = async (client: PlaneClient, args: ParsedArgs): Promise
   const wantPriority = flagValue(args, "priority")?.toLowerCase();
 
   const rows = issues
-    .map((issue) => toRow(issue, project.identifier))
+    .map((issue) => issueToRow(issue, project.identifier))
     .filter((row) => {
       // --state matches either the group (started) or the name (In Progress).
       if (wantState !== undefined) {
@@ -128,7 +131,10 @@ export const listIssues = async (client: PlaneClient, args: ParsedArgs): Promise
 export interface Detail extends Row {
   readonly description: string;
   readonly assignees: ReadonlyArray<string>;
+  readonly labels: ReadonlyArray<string>;
   readonly target_date?: string | null;
+  readonly start_date?: string | null;
+  readonly comments?: ReadonlyArray<CommentRow>;
   readonly parent?: string | null;
   readonly url: string;
 }
@@ -146,7 +152,7 @@ export const showIssue = async (
     client,
     ref,
     flagValue(args, "project"),
-    "id,name,sequence_id,priority,state,assignees,target_date,parent,project,description_html",
+    "id,name,sequence_id,priority,state,assignees,target_date,start_date,parent,labels,project,description_html",
   );
   const states = await listStates(client, projectId);
   const state = states.find((s) => s.id === issue.state);
@@ -161,7 +167,12 @@ export const showIssue = async (
     id: issue.id,
     description: htmlToMarkdown(issue.description_html),
     assignees: issue.assignees ?? [],
+    labels: issue.labels ?? [],
     target_date: issue.target_date ?? null,
+    start_date: issue.start_date ?? null,
+    ...(flagBool(args, "comments")
+      ? { comments: await commentsOf(client, projectId, issue.id) }
+      : {}),
     parent: issue.parent ?? null,
     url: `${baseUrl}/${workspace}/projects/${projectId}/issues/${issue.id}`,
   };
@@ -173,16 +184,21 @@ export const formatDetail = (detail: Detail): string => {
     { name: "state", text: `${detail.state} (${detail.group})` },
     { name: "priority", text: detail.priority },
   ];
+  if (detail.start_date != null) rows.push({ name: "start", text: detail.start_date });
   if (detail.target_date != null) rows.push({ name: "due", text: detail.target_date });
   if (detail.assignees.length > 0) {
     rows.push({ name: "assignees", text: String(detail.assignees.length) });
   }
+  if (detail.labels.length > 0) rows.push({ name: "labels", text: detail.labels.join(", ") });
   if (detail.parent != null) rows.push({ name: "parent", text: detail.parent });
   rows.push({ name: "url", text: detail.url });
   const head = printColumns(rows, "").join("\n");
   // The description goes below the fields, as Markdown: code blocks and tables
   // are why anyone opens a work item, and HTML is unreadable for both of us.
-  return detail.description === "" ? head : `${head}\n\n${detail.description}`;
+  const description = detail.description === "" ? head : `${head}\n\n${detail.description}`;
+  return detail.comments === undefined
+    ? description
+    : `${description}\n\nCOMMENTS\n\n${formatComments(detail.comments)}`;
 };
 
 export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promise<Row> => {
@@ -195,19 +211,7 @@ export const createIssue = async (client: PlaneClient, args: ParsedArgs): Promis
   }
   const project = await resolveProject(client, projectRef);
 
-  const body: Record<string, unknown> = { name: title };
-  const description = flagValue(args, "description");
-  // Written as Markdown, stored as HTML: Plane keeps whatever markup it is given,
-  // so code blocks, tables and lists all survive the round trip.
-  if (description !== undefined) body.description_html = markdownToHtml(description);
-  const priority = flagValue(args, "priority");
-  if (priority !== undefined) body.priority = priority;
-
-  const state = flagValue(args, "state");
-  if (state !== undefined) {
-    const states = await listStates(client, project.id);
-    body.state = findState(states, state).id;
-  }
+  const body = { ...(await issueFields(client, args, project.id)), name: title };
 
   const created = await client.request<Issue>(`projects/${project.id}/issues/`, {
     method: "POST",
@@ -247,24 +251,15 @@ export const updateIssue = async (client: PlaneClient, args: ParsedArgs): Promis
   const project = await resolveProject(client, projectId);
   const states = await listStates(client, projectId);
 
-  const body: Record<string, unknown> = {};
-  const state = flagValue(args, "state");
-  if (state !== undefined) body.state = findState(states, state).id;
-  const priority = flagValue(args, "priority");
-  if (priority !== undefined) body.priority = priority;
-  const name = flagValue(args, "name");
-  if (name !== undefined) body.name = name;
-  const description = flagValue(args, "description");
-  if (description !== undefined) body.description_html = markdownToHtml(description);
+  const body = await issueFields(client, args, projectId, issue);
+  requireChanges(body);
 
-  if (Object.keys(body).length === 0) {
-    throw new UsageError("Nothing to change. Pass --state, --priority, --name or --description.");
-  }
-
-  await client.request(`projects/${projectId}/issues/${issue.id}/`, { method: "PATCH", body });
-  const after = await client.request<Issue>(`projects/${projectId}/issues/${issue.id}/`, {
-    query: { fields: "id,name,sequence_id,priority,state" },
-  });
+  const updated = await client.request<Issue | undefined>(
+    `projects/${projectId}/issues/${issue.id}/`,
+    { method: "PATCH", body },
+  );
+  // Do not turn a successful write into a failure by making a follow-up GET.
+  const after = updated ?? { ...issue, ...body };
   const nowState = states.find((s) => s.id === after.state);
   return {
     ref: `${project.identifier}-${after.sequence_id}`,

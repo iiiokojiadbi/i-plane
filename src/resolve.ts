@@ -17,9 +17,12 @@ const READABLE = /^([A-Za-z][A-Za-z0-9]*)-(\d+)$/;
 export const isUuid = (value: string): boolean => UUID.test(value);
 
 /** Cheapest listing of projects: identifier and name, nothing else. */
-export const listProjects = (client: PlaneClient): Promise<ReadonlyArray<Project>> =>
+export const listProjects = (
+  client: PlaneClient,
+  fields = "id,name,identifier",
+): Promise<ReadonlyArray<Project>> =>
   client.listAll<Project>("projects/", {
-    query: { fields: "id,name,identifier", per_page: 100 },
+    query: { fields, per_page: 100 },
   });
 
 /**
@@ -27,14 +30,18 @@ export const listProjects = (client: PlaneClient): Promise<ReadonlyArray<Project
  * Ambiguity is reported rather than guessed: picking one of two silently is how
  * work items land in the wrong project.
  */
-export const resolveProject = async (client: PlaneClient, ref: string): Promise<Project> => {
+export const resolveProject = async (
+  client: PlaneClient,
+  ref: string,
+  fields = "id,name,identifier",
+): Promise<Project> => {
   if (isUuid(ref)) {
     return client.request<Project>(`projects/${ref}/`, {
-      query: { fields: "id,name,identifier" },
+      query: { fields },
     });
   }
 
-  const projects = await listProjects(client);
+  const projects = await listProjects(client, fields);
   const needle = ref.toLowerCase();
 
   const byIdentifier = projects.filter((p) => p.identifier.toLowerCase() === needle);
@@ -65,7 +72,7 @@ export const resolveIssue = async (
   client: PlaneClient,
   ref: string,
   projectRef?: string,
-  fields = "id,name,sequence_id,state,priority,project,assignees,target_date,parent",
+  fields = "id,name,sequence_id,state,priority,project,assignees,target_date,parent,labels",
 ): Promise<ResolvedIssue> => {
   const readable = READABLE.exec(ref);
   if (readable !== null) {
@@ -114,4 +121,24 @@ export const findState = (states: ReadonlyArray<State>, ref: string): State => {
   if (byGroup.length >= 1 && byGroup[0] !== undefined) return byGroup[0];
   const known = states.map((s) => `${s.name} (${s.group})`).join(", ");
   throw new UsageError(`No state matches "${ref}". This project has: ${known}`);
+};
+
+/** Select one resource by ID, exact name, or unique prefix; never guess a tie. */
+export const resolveNamed = <T extends { readonly id: string; readonly name: string }>(
+  rows: ReadonlyArray<T>,
+  ref: string,
+  category: string,
+): T => {
+  const needle = ref.toLowerCase();
+  const byId = rows.find((row) => row.id === ref);
+  if (byId !== undefined) return byId;
+  const exact = rows.filter((row) => row.name.toLowerCase() === needle);
+  const matches =
+    exact.length > 0 ? exact : rows.filter((row) => row.name.toLowerCase().startsWith(needle));
+  if (matches.length === 1 && matches[0] !== undefined) return matches[0];
+  if (matches.length > 1)
+    throw new UsageError(
+      `Ambiguous ${category} "${ref}": ${matches.map((row) => `${row.name} (${row.id})`).join(", ")}`,
+    );
+  throw new UsageError(`No ${category} matches "${ref}".`);
 };

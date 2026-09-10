@@ -1,0 +1,137 @@
+{
+  "markdown": "| A | B |\n| - | - |\n| 1 | 2 |",
+  "html": "<table>\n<thead>\n<tr>\n<th>A</th>\n<th>B</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1</td>\n<td>2</td>\n</tr>\n</tbody>\n</table>",
+  "response": {
+    "description_json": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "attrs": {
+                "background": null,
+                "textColor": null
+              },
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": "none"
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "A"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": "none"
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "B"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "background": null,
+                "textColor": null
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": null,
+                    "textColor": null
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "1"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": null,
+                    "textColor": null
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "description_binary": "ASGo67V+AAcBB2RlZmF1bHQDBXRhYmxlBwCo67V+AAMIdGFibGVSb3cHAKjrtX4BAwt0YWJsZUhlYWRlcgcAqOu1fgIDCXBhcmFncmFwaAcAqOu1fgMGBACo67V+BAFBKACo67V+Agdjb2xzcGFuAX0BKACo67V+Agdyb3dzcGFuAX0BKACo67V+Aghjb2x3aWR0aAF1AX2WAigAqOu1fgIKYmFja2dyb3VuZAF3BG5vbmWHqOu1fgIDC3RhYmxlSGVhZGVyBwCo67V+CgMJcGFyYWdyYXBoBwCo67V+CwYEAKjrtX4MAUIoAKjrtX4KB2NvbHNwYW4BfQEoAKjrtX4KB3Jvd3NwYW4BfQEoAKjrtX4KCGNvbHdpZHRoAXUBfZYCKACo67V+CgpiYWNrZ3JvdW5kAXcEbm9uZYeo67V+AQMIdGFibGVSb3cHAKjrtX4SAwl0YWJsZUNlbGwHAKjrtX4TAwlwYXJhZ3JhcGgHAKjrtX4UBgQAqOu1fhUBMSgAqOu1fhMHY29sc3BhbgF9ASgAqOu1fhMHcm93c3BhbgF9ASgAqOu1fhMIY29sd2lkdGgBdQF9lgKHqOu1fhMDCXRhYmxlQ2VsbAcAqOu1fhoDCXBhcmFncmFwaAcAqOu1fhsGBACo67V+HAEyKACo67V+Ggdjb2xzcGFuAX0BKACo67V+Ggdyb3dzcGFuAX0BKACo67V+Gghjb2x3aWR0aAF1AX2WAgA="
+  }
+}

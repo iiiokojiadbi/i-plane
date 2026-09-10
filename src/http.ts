@@ -89,6 +89,39 @@ export const needsProxy = (target: string): boolean => {
   return proxyFor(url.protocol) !== undefined;
 };
 
+/** WebSocket transports need their own CONNECT agent and the same exclusions. */
+export const websocketProxy = (target: string): string | undefined => {
+  const url = new URL(target);
+  if (isExcluded(url.hostname)) return undefined;
+  return proxyFor(url.protocol === "wss:" ? "https:" : "http:");
+};
+
+/** Explain the selected route without exposing credentials from a proxy URL. */
+export const connectionRoute = (target: string): string => {
+  if (!needsProxy(target)) return "directly";
+  const proxy = proxyFor(new URL(target).protocol);
+  if (proxy === undefined) return "directly";
+  try {
+    const url = new URL(proxy);
+    return `through proxy ${url.protocol}//${url.host}`;
+  } catch {
+    return "through the configured proxy";
+  }
+};
+
+/** System permission errors can be nested by fetch or inside an AggregateError. */
+export const isConnectionDenied = (cause: unknown, depth = 0): boolean => {
+  if (depth > 8 || cause === null || typeof cause !== "object") return false;
+  const error = cause as { code?: string; cause?: unknown; errors?: unknown[] };
+  return (
+    error.code === "EPERM" ||
+    error.code === "EACCES" ||
+    isConnectionDenied(error.cause, depth + 1) ||
+    (Array.isArray(error.errors) &&
+      error.errors.some((inner) => isConnectionDenied(inner, depth + 1)))
+  );
+};
+
 /**
  * Returns a fetch that goes through the proxy, or undefined when this process
  * cannot do it without help. Never throws: an absent optional dependency is an

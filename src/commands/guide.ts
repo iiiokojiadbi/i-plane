@@ -10,16 +10,22 @@
  */
 
 import { printColumns } from "../output.ts";
-import type { Command } from "../registry.ts";
-import { FLOW, GROUPS, NOTES } from "../registry.ts";
+import type { Command, Option } from "../registry.ts";
+import { FLOW, GLOBAL_OPTIONS, GROUPS, NOTES } from "../registry.ts";
 
 export interface GuideReport {
   readonly groups: typeof GROUPS;
   readonly flow: typeof FLOW;
   readonly notes: typeof NOTES;
+  readonly globalOptions: typeof GLOBAL_OPTIONS;
 }
 
-export const guideReport = (): GuideReport => ({ groups: GROUPS, flow: FLOW, notes: NOTES });
+export const guideReport = (): GuideReport => ({
+  groups: GROUPS,
+  flow: FLOW,
+  notes: NOTES,
+  globalOptions: GLOBAL_OPTIONS,
+});
 
 const label = (command: Command): string =>
   `${command.name}${command.args === undefined ? "" : ` ${command.args}`}`;
@@ -48,6 +54,7 @@ export const formatGuide = (report: GuideReport): string => {
 
   for (const group of report.groups) {
     lines.push(group.title);
+    if (group.summary !== undefined) lines.push(...wrap(group.summary, 96, "  "), "");
     lines.push(
       ...printColumns(
         group.commands.map((command) => ({
@@ -68,6 +75,7 @@ export const formatGuide = (report: GuideReport): string => {
   );
   lines.push("");
 
+  lines.push(formatGlobalOptions(report.globalOptions), "");
   lines.push("HOW THIS TOOL BEHAVES");
   for (const note of report.notes) {
     lines.push(`  ${note.title}`);
@@ -81,9 +89,21 @@ export const formatGuide = (report: GuideReport): string => {
 
 export interface CommandHelp {
   readonly command: Command;
+  readonly globalOptions?: ReadonlyArray<Option>;
 }
 
-export const formatCommandHelp = (help: CommandHelp): string => {
+export const formatGlobalOptions = (options: ReadonlyArray<Option> = GLOBAL_OPTIONS): string =>
+  [
+    "GLOBAL OPTIONS",
+    ...printColumns(
+      options.map((option) => ({
+        name: `${option.flag}${option.value === undefined ? "" : ` ${option.value}`}`,
+        text: option.summary,
+      })),
+    ),
+  ].join("\n");
+
+export const formatCommandHelp = (help: CommandHelp, includeGlobals = true): string => {
   const { command } = help;
   const lines: string[] = [`i-plane ${label(command)}`, "", ...wrap(command.summary, 96, "  ")];
 
@@ -91,16 +111,23 @@ export const formatCommandHelp = (help: CommandHelp): string => {
     lines.push("", `  alias: ${command.alias}`);
   }
 
-  if (command.options !== undefined && command.options.length > 0) {
+  const localOptions = (command.options ?? []).filter((option) => option.flag !== "--json");
+  if (localOptions.length > 0) {
     lines.push("", "OPTIONS");
     lines.push(
       ...printColumns(
-        command.options.map((option) => ({
+        localOptions.map((option) => ({
           name: option.value === undefined ? option.flag : `${option.flag} ${option.value}`,
-          text: option.summary,
+          text: `${option.required === true ? "Required. " : ""}${option.summary}`,
         })),
       ),
     );
+  }
+
+  if (command.notes !== undefined && command.notes.length > 0) {
+    lines.push("", "USAGE NOTES");
+    for (const note of command.notes) lines.push(...wrap(note, 96, "  "), "");
+    if (lines[lines.length - 1] === "") lines.pop();
   }
 
   if (command.examples !== undefined && command.examples.length > 0) {
@@ -112,6 +139,8 @@ export const formatCommandHelp = (help: CommandHelp): string => {
     lines.push("", "USUALLY NEXT");
     for (const step of command.next) lines.push(`  ${step}`);
   }
+
+  if (includeGlobals) lines.push("", formatGlobalOptions(help.globalOptions));
 
   return lines.join("\n");
 };
@@ -138,7 +167,7 @@ export const formatHint = (command: Command, problem: string): string => {
       ...printColumns(
         narrowing.map((option) => ({
           name: `${option.flag} ${option.value}`,
-          text: option.summary,
+          text: `${option.required === true ? "Required. " : ""}${option.summary}`,
         })),
         "    ",
       ),

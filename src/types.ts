@@ -7,6 +7,10 @@ export interface Project {
   readonly id: string;
   readonly name: string;
   readonly identifier: string;
+  readonly timezone?: string;
+  readonly intake_view?: boolean;
+  readonly cycle_view?: boolean;
+  readonly module_view?: boolean;
   readonly description?: string | null;
   readonly total_members?: number;
   readonly total_cycles?: number;
@@ -24,6 +28,7 @@ export interface Issue {
   readonly assignees: ReadonlyArray<string>;
   readonly labels?: ReadonlyArray<string>;
   readonly target_date?: string | null;
+  readonly start_date?: string | null;
   readonly created_at?: string;
   readonly updated_at?: string;
   readonly description_html?: string | null;

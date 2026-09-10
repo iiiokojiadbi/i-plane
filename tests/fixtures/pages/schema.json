@@ -1,0 +1,421 @@
+{
+  "html": "<h2>Heading</h2><p>plain <strong>bold</strong> <em>italic</em> <u>underline</u> <s>strike</s> <code>code</code> <a href=\"https://example.com\">link</a></p><ul><li>bullet<ul><li>nested</li></ul></li></ul><ol start=\"3\"><li>third</li></ol><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"true\">done</li><li data-type=\"taskItem\" data-checked=\"false\">pending</li></ul><blockquote><p>quote</p></blockquote><pre><code class=\"language-python\">print(1)</code></pre><table><tr><th>A</th><th>B</th></tr><tr><td>one</td><td>two</td></tr></table><hr><image-component src=\"https://example.com/a.png\" alt=\"image\"></image-component><p>before<br>after</p>",
+  "response": {
+    "description_json": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "textAlign": null,
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Heading"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "textAlign": null
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "plain "
+            },
+            {
+              "type": "text",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ],
+              "text": "bold"
+            },
+            {
+              "type": "text",
+              "text": " "
+            },
+            {
+              "type": "text",
+              "marks": [
+                {
+                  "type": "italic"
+                }
+              ],
+              "text": "italic"
+            },
+            {
+              "type": "text",
+              "text": " "
+            },
+            {
+              "type": "text",
+              "marks": [
+                {
+                  "type": "underline"
+                }
+              ],
+              "text": "underline"
+            },
+            {
+              "type": "text",
+              "text": " "
+            },
+            {
+              "type": "text",
+              "marks": [
+                {
+                  "type": "strike"
+                }
+              ],
+              "text": "strike"
+            },
+            {
+              "type": "text",
+              "text": " "
+            },
+            {
+              "type": "text",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ],
+              "text": "code"
+            },
+            {
+              "type": "text",
+              "text": " "
+            },
+            {
+              "type": "text",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://example.com",
+                    "target": "_blank",
+                    "rel": "noopener noreferrer nofollow",
+                    "class": "text-accent-secondary underline underline-offset-[3px] hover:text-accent-primary transition-colors cursor-pointer"
+                  }
+                }
+              ],
+              "text": "link"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "bullet"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "attrs": {
+                            "textAlign": null
+                          },
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "nested"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "attrs": {
+            "start": 3,
+            "type": null
+          },
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "third"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "taskList",
+          "content": [
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": true
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "done"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "textAlign": null
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "pending"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "blockquote",
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "textAlign": null
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "quote"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": null
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "print(1)"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "attrs": {
+                "background": null,
+                "textColor": null
+              },
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": "none"
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "A"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": "none"
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "B"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "background": null,
+                "textColor": null
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": null,
+                    "textColor": null
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "one"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "colspan": 1,
+                    "rowspan": 1,
+                    "colwidth": [
+                      150
+                    ],
+                    "background": null,
+                    "textColor": null
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "textAlign": null
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "two"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "imageComponent",
+          "attrs": {
+            "src": "https://example.com/a.png",
+            "alt": "image",
+            "title": null,
+            "id": null,
+            "width": "35%",
+            "height": "auto",
+            "aspectRatio": null,
+            "alignment": "left",
+            "status": "pending"
+          }
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "textAlign": null
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "before"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "after"
+            }
+          ]
+        }
+      ]
+    },
+    "description_binary": "AW+tus+eDQAHAQdkZWZhdWx0AwdoZWFkaW5nBwCtus+eDQAGBACtus+eDQEHSGVhZGluZygArbrPng0ABWxldmVsAX0Ch626z54NAAMJcGFyYWdyYXBoBwCtus+eDQoGBACtus+eDQsGcGxhaW4ghq26z54NEQRib2xkAnt9hK26z54NEgRib2xkhq26z54NFgRib2xkBG51bGyErbrPng0XASCGrbrPng0YBml0YWxpYwJ7fYStus+eDRkGaXRhbGljhq26z54NHwZpdGFsaWMEbnVsbIStus+eDSABIIatus+eDSEJdW5kZXJsaW5lAnt9hK26z54NIgl1bmRlcmxpbmWGrbrPng0rCXVuZGVybGluZQRudWxshK26z54NLAEghq26z54NLQZzdHJpa2UCe32ErbrPng0uBnN0cmlrZYatus+eDTQGc3RyaWtlBG51bGyErbrPng01ASCGrbrPng02BGNvZGUCe32ErbrPng03BGNvZGWGrbrPng07BGNvZGUEbnVsbIStus+eDTwBIIatus+eDT0EbGlua9EBeyJocmVmIjoiaHR0cHM6Ly9leGFtcGxlLmNvbSIsInRhcmdldCI6Il9ibGFuayIsInJlbCI6Im5vb3BlbmVyIG5vcmVmZXJyZXIgbm9mb2xsb3ciLCJjbGFzcyI6InRleHQtYWNjZW50LXNlY29uZGFyeSB1bmRlcmxpbmUgdW5kZXJsaW5lLW9mZnNldC1bM3B4XSBob3Zlcjp0ZXh0LWFjY2VudC1wcmltYXJ5IHRyYW5zaXRpb24tY29sb3JzIGN1cnNvci1wb2ludGVyIn2ErbrPng0+BGxpbmuGrbrPng1CBGxpbmsEbnVsbIetus+eDQoDCmJ1bGxldExpc3QHAK26z54NRAMIbGlzdEl0ZW0HAK26z54NRQMJcGFyYWdyYXBoBwCtus+eDUYGBACtus+eDUcGYnVsbGV0h626z54NRgMKYnVsbGV0TGlzdAcArbrPng1OAwhsaXN0SXRlbQcArbrPng1PAwlwYXJhZ3JhcGgHAK26z54NUAYEAK26z54NUQZuZXN0ZWSHrbrPng1EAwtvcmRlcmVkTGlzdAcArbrPng1YAwhsaXN0SXRlbQcArbrPng1ZAwlwYXJhZ3JhcGgHAK26z54NWgYEAK26z54NWwV0aGlyZCgArbrPng1YBXN0YXJ0AX0Dh626z54NWAMIdGFza0xpc3QHAK26z54NYgMIdGFza0l0ZW0HAK26z54NYwMJcGFyYWdyYXBoBwCtus+eDWQGBACtus+eDWUEZG9uZSgArbrPng1jB2NoZWNrZWQBeIetus+eDWMDCHRhc2tJdGVtBwCtus+eDWsDCXBhcmFncmFwaAcArbrPng1sBgQArbrPng1tB3BlbmRpbmcoAK26z54NawdjaGVja2VkAXmHrbrPng1iAwpibG9ja3F1b3RlBwCtus+eDXYDCXBhcmFncmFwaAcArbrPng13BgQArbrPng14BXF1b3Rlh626z54NdgMJY29kZUJsb2NrBwCtus+eDX4GBACtus+eDX8IcHJpbnQoMSmHrbrPng1+AwV0YWJsZQcArbrPng2IAQMIdGFibGVSb3cHAK26z54NiQEDC3RhYmxlSGVhZGVyBwCtus+eDYoBAwlwYXJhZ3JhcGgHAK26z54NiwEGBACtus+eDYwBAUEoAK26z54NigEHY29sc3BhbgF9ASgArbrPng2KAQdyb3dzcGFuAX0BKACtus+eDYoBCGNvbHdpZHRoAXUBfZYCKACtus+eDYoBCmJhY2tncm91bmQBdwRub25lh626z54NigEDC3RhYmxlSGVhZGVyBwCtus+eDZIBAwlwYXJhZ3JhcGgHAK26z54NkwEGBACtus+eDZQBAUIoAK26z54NkgEHY29sc3BhbgF9ASgArbrPng2SAQdyb3dzcGFuAX0BKACtus+eDZIBCGNvbHdpZHRoAXUBfZYCKACtus+eDZIBCmJhY2tncm91bmQBdwRub25lh626z54NiQEDCHRhYmxlUm93BwCtus+eDZoBAwl0YWJsZUNlbGwHAK26z54NmwEDCXBhcmFncmFwaAcArbrPng2cAQYEAK26z54NnQEDb25lKACtus+eDZsBB2NvbHNwYW4BfQEoAK26z54NmwEHcm93c3BhbgF9ASgArbrPng2bAQhjb2x3aWR0aAF1AX2WAoetus+eDZsBAwl0YWJsZUNlbGwHAK26z54NpAEDCXBhcmFncmFwaAcArbrPng2lAQYEAK26z54NpgEDdHdvKACtus+eDaQBB2NvbHNwYW4BfQEoAK26z54NpAEHcm93c3BhbgF9ASgArbrPng2kAQhjb2x3aWR0aAF1AX2WAoetus+eDYgBAw5ob3Jpem9udGFsUnVsZYetus+eDa0BAw5pbWFnZUNvbXBvbmVudCgArbrPng2uAQNzcmMBdxlodHRwczovL2V4YW1wbGUuY29tL2EucG5nKACtus+eDa4BA2FsdAF3BWltYWdlKACtus+eDa4BBXdpZHRoAXcDMzUlKACtus+eDa4BBmhlaWdodAF3BGF1dG8oAK26z54NrgEJYWxpZ25tZW50AXcEbGVmdCgArbrPng2uAQZzdGF0dXMBdwdwZW5kaW5nh626z54NrgEDCXBhcmFncmFwaAcArbrPng21AQYEAK26z54NtgEGYmVmb3Jlh626z54NtgEDCWhhcmRCcmVha4etus+eDb0BBgQArbrPng2+AQVhZnRlcgA="
+  }
+}

@@ -6,6 +6,8 @@
  * Shape: i-plane <command> [<subcommand>] [positional...] [--flag value] [--bool]
  */
 
+import { ALL_COMMANDS, commandFamily, findCommand, GLOBAL_OPTIONS } from "./registry.ts";
+
 export interface ParsedArgs {
   /** Command path, e.g. ["issue", "ls"]. Empty when nothing was given. */
   readonly path: ReadonlyArray<string>;
@@ -14,23 +16,11 @@ export interface ParsedArgs {
 }
 
 /** Flags that take a value; everything else is a boolean switch. */
-const VALUE_FLAGS = new Set([
-  "url",
-  "token",
-  "workspace",
-  "config",
-  "project",
-  "state",
-  "priority",
-  "assignee",
-  "limit",
-  "description",
-  "name",
-  "label",
-  "cycle",
-  "module",
-  "parent",
-]);
+const VALUE_FLAGS = new Set(
+  [...GLOBAL_OPTIONS, ...ALL_COMMANDS.flatMap((command) => command.options ?? [])]
+    .filter((option) => option.value !== undefined)
+    .map((option) => option.flag.slice(2)),
+);
 
 export const parseArgs = (argv: ReadonlyArray<string>, commandDepth: number): ParsedArgs => {
   const path: string[] = [];
@@ -114,4 +104,15 @@ export const flagNumber = (args: ParsedArgs, name: string): number | undefined =
     throw new UsageError(`Flag --${name} expects a number; got ${raw}.`);
   }
   return parsed;
+};
+
+/** Keep the flat work-item commands while recognizing registered command families. */
+export const parseCommandArgs = (argv: ReadonlyArray<string>): ParsedArgs => {
+  const args = parseArgs(argv, 1);
+  const root = args.path[0];
+  if (root === undefined) return args;
+  if (commandFamily(root).length > 0 && args.positionals[0] !== undefined) {
+    return { ...args, path: [root, args.positionals[0]], positionals: args.positionals.slice(1) };
+  }
+  return { ...args, path: [findCommand(root)?.name ?? root] };
 };
