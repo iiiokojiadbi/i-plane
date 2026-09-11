@@ -100,3 +100,27 @@ Replacement checks the affected document and converted input. Reported losses
 require `--allow-loss`; `--force` does not approve them. A block edit leaves other
 blocks intact. None of these commands prompts for input, and every command
 supports `--json`. Run `i-plane page set --help` for flags and examples.
+
+## Knowledge review marks
+
+With the knowledge-review extension installed, a `knowledgeReview` block reads as
+an ordinary fenced code block containing JSON:
+
+````markdown
+```knowledge-review
+{
+  "date": "2026-09-11",
+  "source": "Release notes and a manual check"
+}
+```
+````
+
+`page read --block` returns this representation with no losses. Include it in a
+Markdown file passed to `page set --file`, or use it for a block replacement, to
+restore the same date and source as a semantic review node. `page outline` shows
+`knowledgeReview` and a preview of both fields. Review dates use `YYYY-MM-DD` and
+must be valid calendar dates; sources are nonempty strings. JSON escaping preserves
+quotes and newlines. Unknown fields are rejected instead of silently discarded.
+
+The fence language is reserved for review metadata. Raw HTML remains escaped.
+Other unknown editor nodes still produce loss warnings and readable XML output.

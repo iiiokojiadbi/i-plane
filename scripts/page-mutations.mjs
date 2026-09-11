@@ -9,6 +9,8 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), "i-plane-mutations-"));
 const fixture = JSON.parse(await readFile(join(root, "tests/fixtures/pages/heading.json"), "utf8"));
 const cases = [
+  ["review input replaced by a paragraph", "src/page-document.ts", "reviewHtml(review)", '"<p>Review omitted</p>"'],
+  ["review output replaced by a paragraph", "src/page-document.ts", "return reviewCodeHtml({ date, source });", 'return "<p>Review omitted</p>";'],
   [
     "constant converter",
     "src/page-document.ts",
@@ -53,6 +55,7 @@ try {
           "tests/page-document.test.ts",
           "tests/page-commands.test.ts",
           "tests/page-api-key.test.ts",
+          "tests/page-review.test.ts",
         ],
         {
           cwd: directory,

@@ -7,6 +7,7 @@ import type { PlaneClient } from "./client.ts";
 import { PlaneError } from "./client.ts";
 import { scrubHtml } from "./html-secrets.ts";
 import { scrub } from "./output.ts";
+import { parseReview, reviewCodeHtml, reviewHtml, validReviewDate } from "./page-review.ts";
 import { htmlToMarkdown } from "./richtext.ts";
 
 interface TextPart {
@@ -87,17 +88,19 @@ export const fingerprint = (node: Block): string =>
     .update(JSON.stringify(content(node)))
     .digest("hex");
 const plainText = (node: Block): string =>
-  node instanceof Y.XmlText
-    ? node
-        .toDelta()
-        .map((part: TextPart) =>
-          typeof part.insert === "string" ? part.insert : JSON.stringify(part.insert),
-        )
-        .join("")
-    : node
-        .toArray()
-        .map((child) => plainText(child as Block))
-        .join(" ");
+  node instanceof Y.XmlElement && node.nodeName === "knowledgeReview"
+    ? `Reviewed ${String(node.getAttribute("reviewedAt") ?? "")}: ${String(node.getAttribute("source") ?? "")}`
+    : node instanceof Y.XmlText
+      ? node
+          .toDelta()
+          .map((part: TextPart) =>
+            typeof part.insert === "string" ? part.insert : JSON.stringify(part.insert),
+          )
+          .join("")
+      : node
+          .toArray()
+          .map((child) => plainText(child as Block))
+          .join(" ");
 export const outline = (fragment: Y.XmlFragment): ReadonlyArray<OutlineRow> =>
   fragment.toArray().map((node, index) => {
     const anchor =
@@ -199,6 +202,31 @@ const render = (node: Block, losses: Set<string>, redactOutput = false): string 
       .join("");
   if (attrs.textAlign && attrs.textAlign !== "left")
     losses.add("Text alignment is not representable in Markdown");
+  if (kind === "knowledgereview") {
+    const date = String(attrs.reviewedAt ?? ""),
+      source = String(attrs.source ?? "");
+    if (
+      typeof attrs.reviewedAt !== "string" ||
+      typeof attrs.source !== "string" ||
+      !validReviewDate(date) ||
+      !source.trim()
+    )
+      losses.add("Review metadata is invalid");
+    if (
+      Object.keys(attrs).some((key) => !["id", "reviewedAt", "source"].includes(key)) ||
+      node.length
+    )
+      losses.add("Additional review attributes or content are not represented in Markdown");
+    if (
+      redactOutput &&
+      (attrs.reviewedAt !== node.getAttribute("reviewedAt") ||
+        attrs.source !== node.getAttribute("source"))
+    )
+      losses.add(
+        "Sensitive review metadata was redacted; the printed block is not a lossless copy",
+      );
+    return reviewCodeHtml({ date, source });
+  }
   if (kind === "doc") return children();
   if (kind === "paragraph") return `<p>${children()}</p>`;
   if (kind === "heading") {
@@ -215,6 +243,8 @@ const render = (node: Block, losses: Set<string>, redactOutput = false): string 
     return `<li>${checkbox}${body}</li>`;
   }
   if (kind === "blockquote") return `<blockquote>${children()}</blockquote>`;
+  if (kind === "codeblock" && attrs.language === "knowledge-review")
+    losses.add("The knowledge-review fence language is reserved for review metadata");
   if (kind === "codeblock")
     return `<pre><code${attrs.language ? attr("class", `language-${attrs.language}`) : ""}>${escapeHtml(redactOutput ? scrub(plainText(node)) : plainText(node))}</code></pre>`;
   if (kind === "horizontalrule") return "<hr>";
@@ -273,6 +303,20 @@ export const lossesFor = (nodes: ReadonlyArray<Block>): string[] => {
   return [...losses];
 };
 const parser = new MarkdownIt({ html: false }).use(taskLists);
+const renderFence = parser.renderer.rules.fence;
+parser.renderer.rules.fence = (tokens, index, options, environment, renderer) => {
+  const token = tokens[index];
+  if (/^knowledge-review\s/.test(token?.info.trim() ?? ""))
+    throw new UsageError("A knowledge-review fence does not accept additional info fields.");
+  if (token?.info.trim() === "knowledge-review") {
+    const review = parseReview(token.content);
+    return environment?.reviewAsCode ? reviewCodeHtml(review) : reviewHtml(review);
+  }
+  return (
+    renderFence?.(tokens, index, options, environment, renderer) ??
+    renderer.renderToken(tokens, index, options)
+  );
+};
 // The plugin requires a space after the marker, while Markdown parsing trims
 // that space from an empty item. Keep empty editor checkboxes as checkboxes.
 parser.core.ruler.before("github-task-lists", "empty-task-items", (state) => {
@@ -299,6 +343,13 @@ const codeNodes = (node: Y.XmlFragment | Y.XmlElement): Y.XmlElement[] =>
         ? [...(child.nodeName.toLowerCase() === "codeblock" ? [child] : []), ...codeNodes(child)]
         : [],
     );
+const renderMarkdown = (markdown: string, reviewAsCode = false): string =>
+  parser
+    .render(markdown, { reviewAsCode })
+    .trim()
+    .replace(/(<li class="task-list-item">)\s*<p>([\s\S]*?)<\/p>/g, "$1$2")
+    .replace(/(<input class="task-list-item-checkbox"[^>]*>) /g, "$1");
+
 export interface PreparedDocument {
   doc: Y.Doc;
   fragment: Y.XmlFragment;
@@ -308,11 +359,7 @@ export const prepareMarkdown = async (
   client: PlaneClient,
   markdown: string,
 ): Promise<PreparedDocument> => {
-  const html = parser
-    .render(markdown)
-    .trim()
-    .replace(/(<li class="task-list-item">)\s*<p>([\s\S]*?)<\/p>/g, "$1$2")
-    .replace(/(<input class="task-list-item-checkbox"[^>]*>) /g, "$1");
+  const html = renderMarkdown(markdown);
   if (!html) {
     const doc = new Y.Doc();
     return { doc, fragment: doc.getXmlFragment("default"), losses: [] };
@@ -339,7 +386,9 @@ export const prepareMarkdown = async (
     const fragment = doc.getXmlFragment("default");
     const languages = parser
       .parse(markdown, {})
-      .filter((token) => token.block && token.tag === "code")
+      .filter(
+        (token) => token.block && token.tag === "code" && token.info.trim() !== "knowledge-review",
+      )
       .map((token) => token.info.trim().split(/\s+/)[0] || null);
     const blocks = codeNodes(fragment);
     const losses: string[] = [];
@@ -354,7 +403,7 @@ export const prepareMarkdown = async (
         }),
       );
     const rendered = readFragment(fragment);
-    if (rendered.markdown !== htmlToMarkdown(html))
+    if (rendered.markdown !== htmlToMarkdown(renderMarkdown(markdown, true)))
       losses.push("The converter changed Markdown content or formatting");
     doc.transact(() => stamp(fragment));
     return { doc, fragment, losses };

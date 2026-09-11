@@ -1,0 +1,24 @@
+{
+  "review": {
+    "date": "2026-09-11",
+    "source": "Reference \"quoted\" & <tag>\nSecond line with ``` and ~~~"
+  },
+  "html": "<div data-knowledge-review data-reviewed-at=\"2026-09-11\" data-source=\"Reference &quot;quoted&quot; &amp; &lt;tag&gt;\nSecond line with ``` and ~~~\">Reviewed 2026-09-11: Reference &quot;quoted&quot; &amp; &lt;tag&gt;\nSecond line with ``` and ~~~</div>",
+  "markdown": "```knowledge-review\n{\n  \"date\": \"2026-09-11\",\n  \"source\": \"Reference \\\"quoted\\\" & <tag>\\nSecond line with ``` and ~~~\"\n}\n```",
+  "response": {
+    "description_json": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "knowledgeReview",
+          "attrs": {
+            "reviewedAt": "2026-09-11",
+            "source": "Reference \"quoted\" & <tag>\nSecond line with ``` and ~~~"
+          }
+        }
+      ]
+    },
+    "description_html": "<div data-knowledge-review=\"\" data-reviewed-at=\"2026-09-11\" data-source=\"Reference &quot;quoted&quot; &amp; &lt;tag&gt;\nSecond line with ``` and ~~~\">Reviewed 2026-09-11: Reference &quot;quoted&quot; &amp; &lt;tag&gt;\nSecond line with ``` and ~~~</div>",
+    "description_binary": "AQOQypPhBwAHAQdkZWZhdWx0Aw9rbm93bGVkZ2VSZXZpZXcoAJDKk+EHAApyZXZpZXdlZEF0AXcKMjAyNi0wOS0xMSgAkMqT4QcABnNvdXJjZQF3N1JlZmVyZW5jZSAicXVvdGVkIiAmIDx0YWc+ClNlY29uZCBsaW5lIHdpdGggYGBgIGFuZCB+fn4A"
+  }
+}
