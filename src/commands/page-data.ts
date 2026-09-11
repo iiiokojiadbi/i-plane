@@ -10,6 +10,7 @@ export interface Page {
   readonly id: string;
   readonly name: string;
   readonly description_html?: string | null;
+  readonly description_json?: unknown;
   readonly updated_at?: string;
   readonly is_locked?: boolean;
   readonly access?: number;
@@ -55,10 +56,11 @@ export const formatPages = (pages: ReadonlyArray<Page>): string =>
         "",
       ).join("\n");
 export const pageDetail = (page: Page) => {
+  const { description_json: document, ...metadata } = page;
   const html = scrubHtml(page.description_html ?? "");
   return {
-    ...page,
+    ...metadata,
     description_html: page.description_html == null ? page.description_html : html,
-    ...pageHtmlToMarkdown(page.description_html ?? ""),
+    ...pageHtmlToMarkdown(page.description_html ?? "", document),
   };
 };

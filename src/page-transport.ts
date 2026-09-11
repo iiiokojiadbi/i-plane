@@ -4,12 +4,16 @@ import type { Config } from "./config.ts";
 import { type PageCapability, PageCapabilityCache } from "./page-cache.ts";
 import type { SessionClient } from "./session.ts";
 
+export class PageIdentityChanged extends PlaneError {}
+
 export interface LiveCredentials {
   token: string;
   release?: string;
 }
 export interface PageClient {
   readonly config: Config;
+  beginPageCommand?(): void;
+  markPageMutation?(): void;
   request<T>(path: string, options?: RequestOptions): Promise<T>;
   listAll<T>(path: string, options?: RequestOptions): Promise<ReadonlyArray<T>>;
   preparePages?(projectId: string): Promise<"changed-identity" | undefined>;
@@ -32,6 +36,8 @@ export class AutoPageClient implements PageClient {
   private prepared = new Set<string>();
   private firstLists = new Map<string, unknown>();
   private readonly refresh: boolean;
+  private commandScope = false;
+  private mutationStarted = false;
 
   constructor(
     config: Config,
@@ -42,6 +48,14 @@ export class AutoPageClient implements PageClient {
     this.cache = options.cache ?? new PageCapabilityCache(config.url.value);
     this.refresh = options.refresh ?? false;
     this.sessionDirectory = options.sessionDirectory;
+  }
+
+  beginPageCommand(): void {
+    this.commandScope = true;
+    this.mutationStarted = false;
+  }
+  markPageMutation(): void {
+    this.mutationStarted = true;
   }
 
   private async runtime(): Promise<RuntimeConfiguration | undefined> {
@@ -133,6 +147,8 @@ export class AutoPageClient implements PageClient {
     await this.initialize();
     const match = /^projects\/([^/]+)\/pages\//.exec(path);
     if (match?.[1]) await this.preparePages(match[1]);
+    if ((options.method ?? "GET") !== "GET" && path !== "/live/convert-document")
+      this.markPageMutation();
     if (this.selection?.mode === "session") return (await this.session()).request<T>(path, options);
     if ((options.method ?? "GET") === "GET" && !options.query && this.firstLists.has(path)) {
       const rows = this.firstLists.get(path);
@@ -151,6 +167,15 @@ export class AutoPageClient implements PageClient {
       ) {
         await this.cache.clear();
         await this.selectSession(error);
+        if (this.commandScope) {
+          if (this.mutationStarted)
+            throw new PlaneError(
+              "Page access changed after a mutation started. Inspect the page before retrying; no writes were replayed.",
+            );
+          throw new PageIdentityChanged(
+            "Page access changed; resolve project references again under the selected identity.",
+          );
+        }
         return (await this.session()).request<T>(path, options);
       }
       throw error;

@@ -68,7 +68,9 @@ runtime release; session live connections negotiate it too when present. An adap
 with no installed runtime package retains stock session live access. When detection
 changes the identity to a session user, project references are resolved again under
 that user before reading or writing pages, so cold and cached commands target the
-same project.
+same project. If a cached API-key route disappears during a list read, the command
+resolves its original references again before any mutation. An HTTP or live
+mutation that has started is never replayed.
 
 ## Read, inspect, edit
 
@@ -146,6 +148,12 @@ blocks intact. None of these commands prompts for input, and every command
 supports `--json`. Run `i-plane page set --help` for flags and examples.
 
 ## Knowledge review marks
+
+Saved detail responses from the matching extension include canonical JSON for
+review restoration. If older HTML lost review attributes, `page show` can recover
+them by the retained block ID. Missing or ambiguous IDs, invalid canonical fields,
+stale review order and unsupported wrappers produce explicit losses. Canonical
+JSON is used internally and omitted from the CLI output.
 
 With the knowledge-review extension installed, a `knowledgeReview` block reads as
 an ordinary fenced code block containing JSON:

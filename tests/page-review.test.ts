@@ -148,3 +148,101 @@ test("saved review secrets and unexpected semantic attributes produce explicit l
   const extra = pageDetail({ id: "page", name: "Page", description_html: fixture.html.replace("<div", '<div data-extra="future"') });
   expect(extra.losses.join(" ")).toContain("Additional review attributes");
 });
+
+test("review blocks and nested line breaks in saved table cells report structural loss", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const table = pageDetail({ id: "page", name: "Page", description_html: `<table><tr><th>${fixture.html}</th></tr></table>` });
+  expect(table.markdown).toContain("knowledge-review");
+  expect(table.losses.join(" ")).toContain("Review blocks inside table cells");
+  const lines = pageDetail({ id: "page", name: "Page", description_html: '<table><tr><th><p>One<br>Two</p></th></tr></table>' });
+  expect(lines.losses.join(" ")).toContain("line breaks or block structure");
+});
+
+test("historically sanitized review HTML restores exact metadata from its saved block ID", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const canonical = structuredClone(fixture.response.description_json);
+  canonical.content[0].attrs.id = "review-id";
+  const html = fixture.response.description_html.replace('<div', '<div id="review-id"')
+    .replace(/ data-knowledge-review=""/, '').replace(/ data-reviewed-at="[^"]*"/, '').replace(/ data-source="[^"]*"/, '');
+  const result = pageDetail({ id: "page", name: "Page", description_html: html, description_json: canonical });
+  expect(result.markdown).toBe(fixture.markdown);
+  expect(result.losses).toEqual([]);
+  expect(result).not.toHaveProperty("description_json");
+});
+
+test("unmatched canonical review data and duplicate HTML anchors cannot disappear silently", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const canonical = structuredClone(fixture.response.description_json);
+  const missing = pageDetail({ id: "page", name: "Page", description_html: "<div>Reviewed history</div>", description_json: canonical });
+  expect(missing.losses.join(" ")).toContain("omits canonical review metadata");
+  canonical.content[0].attrs.id = "review-id";
+  const html = fixture.response.description_html.replace('<div', '<div id="review-id"');
+  const duplicate = pageDetail({ id: "page", name: "Page", description_html: html + html, description_json: canonical });
+  expect(duplicate.losses.join(" ")).toContain("occurs more than once");
+});
+
+test("canonical empty documents do not resurrect stale HTML review markup", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const canonical = { ...fixture.response.description_json, content: [] };
+  const result = pageDetail({ id: "page", name: "Page", description_html: fixture.html, description_json: canonical });
+  expect(result.losses.join(" ")).toContain("absent from the canonical document");
+  expect(result.markdown).not.toContain("```knowledge-review\n");
+});
+
+test("canonical review recovery never returns unredacted metadata", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const canonical = structuredClone(fixture.response.description_json);
+  canonical.content[0].attrs.id = "review-id";
+  canonical.content[0].attrs.source = 'canonical-secret-"value';
+  guardSecret(canonical.content[0].attrs.source);
+  const result = pageDetail({ id: "page", name: "Page", description_html: '<div id="review-id">Old review text</div>', description_json: canonical });
+  expect(JSON.stringify(result)).not.toContain("canonical-secret");
+  expect(result.markdown).toContain("[token]");
+  expect(result.losses.join(" ")).toContain("Sensitive review metadata");
+});
+
+test("invalid canonical fields cannot borrow valid stale HTML metadata", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  for (const field of ["reviewedAt", "source"]) {
+    const canonical = structuredClone(fixture.response.description_json);
+    canonical.content[0].attrs.id = "review-id";
+    canonical.content[0].attrs[field] = null;
+    const result = pageDetail({ id: "page", name: "Page", description_html: fixture.html.replace('<div', '<div id="review-id"'), description_json: canonical });
+    expect(result.losses.join(" ")).toContain("Review metadata is invalid");
+    expect(result.markdown).not.toContain("```knowledge-review\n");
+  }
+});
+
+test("review wrappers and canonical marks cannot silently change semantic Markdown", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  for (const tag of ["code", "strong", "h2", "pre"]) {
+    const result = pageDetail({ id: "page", name: "Page", description_html: `<${tag}>${fixture.html}</${tag}>` });
+    expect(result.losses.join(" ")).toContain(`Review blocks inside ${tag}`);
+  }
+  const canonical = structuredClone(fixture.response.description_json);
+  canonical.content[0].marks = [{ kind: "example-mark" }];
+  const result = pageDetail({ id: "page", name: "Page", description_html: fixture.html, description_json: canonical });
+  expect(result.losses.join(" ")).toContain("Additional review attributes");
+});
+
+test("canonical review order differences expose changes to equal-date source selection", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const { reviewHtml } = await import("../src/page-review.ts");
+  const first = structuredClone(fixture.response.description_json.content[0]);
+  const second = structuredClone(first);
+  first.attrs = { id: "first", reviewedAt: "2026-09-11", source: "First" };
+  second.attrs = { id: "second", reviewedAt: "2026-09-11", source: "Second" };
+  const html = reviewHtml({ date: "2026-09-11", source: "First" }).replace('<div', '<div id="first"') + reviewHtml({ date: "2026-09-11", source: "Second" }).replace('<div', '<div id="second"');
+  const result = pageDetail({ id: "page", name: "Page", description_html: html, description_json: { ...fixture.response.description_json, content: [second, first] } });
+  expect(result.losses.join(" ")).toContain("equal-date source selection would change");
+});
+
+test("empty and caption-only tables cannot crash a saved page read", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  for (const table of ["<table></table>", "<table><tbody></tbody></table>", "<table><caption>Caption</caption></table>", "<table><tr></tr></table>"]) {
+    const result = pageDetail({ id: "page", name: "Page", description_html: `<p>Readable page</p>${table}` });
+    expect(result.markdown).toContain("Readable page");
+    expect(result.markdown).toContain("<table>");
+    expect(result.losses.join(" ")).toContain("table without cells");
+  }
+});

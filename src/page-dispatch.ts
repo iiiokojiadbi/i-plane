@@ -1,7 +1,7 @@
 import { type ParsedArgs, UsageError } from "./args.ts";
 import { formatPages, pageDetail, pageOf, pagesOf, projectOfPage } from "./commands/page-data.ts";
 import { printValue, warn } from "./output.ts";
-import type { PageClient } from "./page-transport.ts";
+import { type PageClient, PageIdentityChanged } from "./page-transport.ts";
 import { required } from "./validation.ts";
 
 type Handler = (client: PageClient, args: ParsedArgs, json: boolean) => Promise<void>;
@@ -46,5 +46,13 @@ export const dispatchPageCommand = async (
 ): Promise<void> => {
   const handler = PAGE_HANDLERS[command];
   if (!handler) throw new UsageError(`Unknown page command "${command}".`);
-  await handler(client, args, json);
+  client.beginPageCommand?.();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await handler(client, args, json);
+      return;
+    } catch (error) {
+      if (!(error instanceof PageIdentityChanged) || attempt > 0) throw error;
+    }
+  }
 };

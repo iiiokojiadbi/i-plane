@@ -245,3 +245,71 @@ test("adapter with no installed package keeps stock session live available", asy
   expect((await cache().read())?.mode).toBe("session");
   expect(new URL(stub.authentications[0]!.url, stub.url).searchParams.has("forPlaneRelease")).toBe(false);
 });
+
+test("cached extension removal restarts page command resolution before accessing the session project", async () => {
+  const { dispatchPageCommand } = await import("../src/page-dispatch.ts");
+  const { parseCommandArgs } = await import("../src/args.ts");
+  credentials(); runtime = false;
+  await cache().write("api-key", "public-list", true, true);
+  const fetcher = globalThis.fetch;
+  const visited: string[] = [];
+  globalThis.fetch = (async (url, init) => {
+    const path = new URL(String(url)).pathname; visited.push(path);
+    if (path === "/api/v1/workspaces/workspace/projects/") return Response.json([{ id: "account-a-project", name: "Knowledge", identifier: "KA" }]);
+    if (path === "/api/workspaces/workspace/projects/") return Response.json([{ id: "account-b-project", name: "Knowledge", identifier: "KB" }]);
+    if (path === "/api/v1/workspaces/workspace/projects/account-a-project/pages/") return new Response(null, { status: 404 });
+    if (path === "/api/workspaces/workspace/projects/account-a-project/pages/") throw new Error("Wrong session project");
+    return fetcher(url, init);
+  }) as typeof fetch;
+  const stdout = process.stdout.write;
+  let printed = ""; process.stdout.write = ((value: string) => { printed += value; return true; }) as typeof stdout;
+  try {
+    await dispatchPageCommand("pages", client(), parseCommandArgs(["pages", "Knowledge"]), true);
+    expect(JSON.parse(printed)).toHaveLength(1);
+    expect(visited).toContain("/api/workspaces/workspace/projects/account-b-project/pages/");
+    expect(visited).not.toContain("/api/workspaces/workspace/projects/account-a-project/pages/");
+  } finally { process.stdout.write = stdout; }
+});
+
+test("late capability changes cannot restart a command after a mutation begins", async () => {
+  credentials(); await cache().write("api-key", "public-list", true, true);
+  const selected = client(); selected.beginPageCommand();
+  await selected.request(list, { method: "POST", body: { name: "Already created" } });
+  publicStatus = 404; runtime = false;
+  await expect(selected.listAll(list)).rejects.toThrow("no writes were replayed");
+  expect(calls.filter(call => call.method === "POST")).toHaveLength(1);
+  expect(logins).toBe(0);
+});
+
+test("page show resolves both project and page names again after cached capability removal", async () => {
+  const { dispatchPageCommand } = await import("../src/page-dispatch.ts");
+  const { parseCommandArgs } = await import("../src/args.ts");
+  credentials(); runtime = false; await cache().write("api-key", "public-list", true, true);
+  const fetcher = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    const path = new URL(String(url)).pathname;
+    if (path.endsWith("/projects/")) return Response.json([{ id: path.includes("/v1/") ? "a" : "b", name: "Knowledge", identifier: "KN" }]);
+    if (path === "/api/v1/workspaces/workspace/projects/a/pages/") return new Response(null, { status: 404 });
+    if (path === "/api/workspaces/workspace/projects/b/pages/") return Response.json([{ id: "session-page", name: "Notes" }]);
+    if (path === "/api/workspaces/workspace/projects/b/pages/session-page/") return Response.json({ id: "session-page", name: "Notes", description_html: "<p>Selected session project</p>" });
+    if (path.includes("/api/workspaces/workspace/projects/a/")) throw new Error("Old project reference reached session API");
+    return fetcher(url, init);
+  }) as typeof fetch;
+  const stdout = process.stdout.write;
+  let printed = ""; process.stdout.write = ((value: string) => { printed += value; return true; }) as typeof stdout;
+  try {
+    await dispatchPageCommand("page show", client(), parseCommandArgs(["page", "show", "Knowledge", "Notes"]), true);
+    expect(JSON.parse(printed).markdown).toBe("Selected session project");
+  } finally { process.stdout.write = stdout; }
+});
+
+test("page creation is never replayed on a cached-route POST404", async () => {
+  const { dispatchPageCommand } = await import("../src/page-dispatch.ts");
+  const { parseCommandArgs } = await import("../src/args.ts");
+  credentials(); publicStatus = 404; runtime = false; await cache().write("api-key", "public-list", true, true);
+  const fetcher = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => String(url).endsWith("/projects/") ? Response.json([{ id: "project", name: "Knowledge", identifier: "KN" }]) : fetcher(url, init)) as typeof fetch;
+  await expect(dispatchPageCommand("page create", client(), parseCommandArgs(["page", "create", "Knowledge", "--name", "New page"]), true)).rejects.toMatchObject({ status: 404 });
+  expect(calls.filter(call => call.method === "POST")).toHaveLength(1);
+  expect(logins).toBe(0);
+});

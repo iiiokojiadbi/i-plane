@@ -206,3 +206,19 @@ lazy dependency loading and package inventory checks. Nine deliberate mutations
 were detected, including permission-triggered fallback and non-expiring capability
 selection. These checks cover IPL-24; they do not resolve the separate PLX-11 review
 findings in the extension layer and whole-page review conversion.
+
+### Review follow-up verification
+
+Saved page reads preserve semantic review fences and can restore older sanitized
+HTML from canonical JSON by block ID. Invalid or unmatched metadata, unsupported
+wrappers, stale review order and malformed tables produce explicit losses.
+A real built-CLI `page show` to file to `page set` round trip passed with exact
+review date/source retained after browser reload. Unsupported underline content
+reported a read loss and refused replacement without `--allow-loss`.
+
+Late capability removal now repeats reference resolution before any mutation;
+HTTP and live mutation markers prevent replay once a write has started. Targeted
+independent reviews of formatting and command targeting found no remaining
+confirmed issues. The complete release dry run passed 1,338 tests and twelve
+intentional mutation checks. The aggregate extension review remains separately
+tracked in PLX-12; these results do not claim production deployment or publication.

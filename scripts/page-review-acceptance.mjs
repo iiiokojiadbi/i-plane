@@ -23,13 +23,25 @@ for (const packagePath of [join(root, "package.json"), join(dirname(process.exec
 }
 if (!chromium) throw new Error("Playwright is required");
 const execute = promisify(execFile);
-const cli = async (...args) => {
-  const { stdout } = await execute(process.execPath, [join(root, "dist/cli.js"), ...args, "--json"], { env, timeout: 45000 });
-  return JSON.parse(stdout);
+const entry = process.env.IPLANE_ENTRY ?? join(root, "dist/cli.js");
+let lastCall = 0;
+const invoke = async (args, json = true) => {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await delay(Math.max(0, 3300 - (Date.now() - lastCall)));
+    lastCall = Date.now();
+    try {
+      return await execute(process.execPath, [entry, ...args, ...(json ? ["--json"] : [])], { env, timeout: 45000 });
+    } catch (error) {
+      if (attempt || !String(error.stderr).includes("Rate limited (429)")) throw error;
+      // An explicit rate-limit refusal performed no mutation; wait one server window.
+      await delay(65000);
+    }
+  }
 };
+const cli = async (...args) => JSON.parse((await invoke(args)).stdout);
 const report = { version: await cli("version"), checks: [], errors: [] };
 const browser = await chromium.launch({ env });
-let created, page;
+let created, page, primaryFailure;
 try {
   const review = { date: "2026-09-11", source: 'Reference "quoted" & <tag>\nSecond line with ``` and ~~~' };
   const markdown = '\x60\x60\x60knowledge-review\n' + JSON.stringify(review, null, 2) + '\n\x60\x60\x60';
@@ -67,7 +79,7 @@ try {
   }
   assert.ok(snapshot.markdown.includes(markdown));
   assert.deepEqual(snapshot.losses, []);
-  const printed = await execute(process.execPath, [join(root, "dist/cli.js"), "page", "show", fixture.project_id, created.id], { env, timeout: 45000 });
+  const printed = await invoke(["page", "show", fixture.project_id, created.id], false);
   assert.equal(printed.stderr, "");
   await writeFile(inputPath, `Full replacement heading\n\n${printed.stdout.trim()}\n\nTail paragraph`);
   report.checks.push("Saved HTML page show emits exact semantic review Markdown");
@@ -126,6 +138,9 @@ try {
   await mkdir(output, { recursive: true });
   await page.screenshot({ path: join(output, "document.png"), fullPage: true });
   assert.deepEqual(report.errors, []);
+} catch (error) {
+  primaryFailure = error;
+  throw error;
 } finally {
   await browser.close();
   if (created) {
@@ -135,7 +150,8 @@ try {
       report.checks.push("Archive followed by whole-page deletion");
     } catch (error) {
       report.cleanupPage = created.id;
-      throw error;
+      report.cleanupError = String(error.message);
+      if (!primaryFailure) throw error;
     } finally {
       await mkdir(output, { recursive: true });
       await writeFile(join(output, "result.json"), `${JSON.stringify(report, null, 2)}\n`);

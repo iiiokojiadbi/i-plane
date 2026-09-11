@@ -132,6 +132,7 @@ export const runPageContent = async (
       } else {
         let stamped: number | undefined,
           losses: string[] = [];
+        client.markPageMutation?.();
         const delivered = await live.write((fragment) => {
           if (command === "page stamp") stamped = stamp(fragment);
           else
