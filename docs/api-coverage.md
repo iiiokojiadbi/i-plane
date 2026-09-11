@@ -102,9 +102,9 @@ API endpoints; the diagnostic points to `issueId` from an earlier JSON response.
 
 ## Project pages
 
-`pages` and `page show` use the API-key pages endpoint. `page outline`, `page read`,
+`pages` and `page show` automatically select API-key or native session page access. `page outline`, `page read`,
 `page stamp`, `page create`, `page set`, `page insert` and block removal use the
-live document protocol. Whole-page deletion uses the API-key pages endpoint. See the
+live document protocol. Whole-page deletion uses the selected page endpoint. See the
 [page workflow](pages.md) for credentials, fingerprints, formatting losses and
 asynchronous persistence. This internal API can change independently of Plane's
 public API; compatibility is covered by converter fixtures and live acceptance.
@@ -166,13 +166,25 @@ project. It exercises all nine commands and observes saved HTML within a bounded
 window; that window is a test limit, not a persistence guarantee. Run
 `node scripts/page-mutations.mjs` for isolated mutation checks.
 
-### API-key page transport
+### Automatic page transport
 
-All commands share `PlaneClient` and the same configuration. Page writes never
-fall back to password sign-in or retry authentication. The live connection sends
-`{apiKey, readOnly}` and the active extension release; the server derives identity
-and checks permissions before each operation. The converter also uses the common
-HTTP transport. Redirects are rejected so credentials cannot follow another origin.
+`AutoPageClient` probes the public project-page list, prefers API-key access and
+selects the native session API only when the route is absent and runtime
+configuration does not advertise API-key pages. Permission failures and individual
+page `404` responses never cause fallback. Capabilities are cached per instance
+for five minutes, with `--refresh-pages` for immediate redetection. Config output
+explains the cached selection without network access or loading session settings.
+
+The session implementation and credentials load lazily. Session-only page access
+remains supported; ordinary commands still require the public API key. A definite
+HTTP `401` may refresh session authentication once; live may refresh once only
+before synchronization. Live mutations are never replayed. API-key access never
+refreshes through password sign-in. Both paths keep conversion on their selected
+HTTP transport and reject redirects to avoid forwarding credentials.
+
+Tests cover both identities, cache isolation/expiry/reset, installation transitions,
+missing credentials, permission failures, redaction, session refresh and live
+handshakes. See [pages.md](pages.md) for configuration and cache paths.
 
 Run `node scripts/page-mutations.mjs` to check that the page tests detect intentional
 regressions. `scripts/page-key-acceptance.mjs` exercises a built CLI against an
@@ -180,3 +192,17 @@ isolated deployment using a private test fixture and a browser. It creates a pag
 checks both writers, stale fingerprints and deletion, then removes the test page.
 The package ships command help and user documentation; repository-only contributor
 instructions are excluded from the release archive.
+
+### Automatic transport verification
+
+The built Node CLI passed all nine page commands against isolated Plane 1.4.2
+instances both with API-key pages enabled and with the official, unmodified
+backend/live images. Each run verified live editing, stale fingerprints, language
+preservation, saved HTML and cleanup. The stock instance also passed session-only
+access without an API key. No production rollout or npm publication was performed.
+
+The release dry run passed 1,318 tests, TypeScript, formatting, Node smoke checks,
+lazy dependency loading and package inventory checks. Nine deliberate mutations
+were detected, including permission-triggered fallback and non-expiring capability
+selection. These checks cover IPL-24; they do not resolve the separate PLX-11 review
+findings in the extension layer and whole-page review conversion.

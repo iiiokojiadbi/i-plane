@@ -61,7 +61,7 @@ export class PlaneClient {
 
   constructor(config: Config) {
     this.config = config;
-    guardSecret(config.token.value);
+    if (config.token.value) guardSecret(config.token.value);
   }
 
   private async fetcher(target: string): Promise<FetchLike> {

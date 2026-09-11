@@ -3,11 +3,11 @@ import MarkdownIt from "markdown-it";
 import taskLists from "markdown-it-task-lists";
 import * as Y from "yjs";
 import { UsageError } from "./args.ts";
-import type { PlaneClient } from "./client.ts";
 import { PlaneError } from "./client.ts";
 import { scrubHtml } from "./html-secrets.ts";
 import { scrub } from "./output.ts";
 import { parseReview, reviewCodeHtml, reviewHtml, validReviewDate } from "./page-review.ts";
+import type { PageClient } from "./page-transport.ts";
 import { htmlToMarkdown } from "./richtext.ts";
 
 interface TextPart {
@@ -356,7 +356,7 @@ export interface PreparedDocument {
   losses: string[];
 }
 export const prepareMarkdown = async (
-  client: PlaneClient,
+  client: PageClient,
   markdown: string,
 ): Promise<PreparedDocument> => {
   const html = renderMarkdown(markdown);

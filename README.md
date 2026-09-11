@@ -83,7 +83,8 @@ to any command for its structured result. Exit code `2` means an invalid call;
 For supported fields, compatibility details and development checks, see the
 [capability reference](docs/api-coverage.md).
 
-Pages use the same API key and require the for-plane API-key pages extension. See
+Pages prefer the same API key when the for-plane extension is available. On stock
+Plane, the CLI detects the missing endpoint and uses password sign-in. See
 the [page workflow](docs/pages.md) for setup, block edits and delivery semantics.
 `i-plane page --help` carries the same command examples into your terminal.
 

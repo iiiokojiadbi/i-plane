@@ -40,7 +40,7 @@ export interface ConfigInput {
 const DEFAULT_CONFIG_PATH = join(homedir(), ".config", "plane", "credentials");
 
 /** Reads KEY=VALUE lines. A missing file is not an error: flags or env may cover it. */
-const readCredentials = (path: string): Map<string, string> => {
+export const readConfigValues = (path: string, keys: readonly string[]): Map<string, string> => {
   const entries = new Map<string, string>();
   let text: string;
   try {
@@ -54,16 +54,7 @@ const readCredentials = (path: string): Map<string, string> => {
     const eq = trimmed.indexOf("=");
     if (eq <= 0) continue;
     const key = trimmed.slice(0, eq).trim();
-    if (
-      ![
-        "PLANE_URL",
-        "PLANE_BASE_URL",
-        "PLANE_API_KEY",
-        "PLANE_WORKSPACE",
-        "PLANE_WORKSPACE_SLUG",
-      ].includes(key)
-    )
-      continue;
+    if (!keys.includes(key)) continue;
     let value = trimmed.slice(eq + 1).trim();
     // Values may be quoted; the convention does not require it, but tolerate it.
     if (
@@ -76,6 +67,15 @@ const readCredentials = (path: string): Map<string, string> => {
   }
   return entries;
 };
+
+const readCredentials = (path: string): Map<string, string> =>
+  readConfigValues(path, [
+    "PLANE_URL",
+    "PLANE_BASE_URL",
+    "PLANE_API_KEY",
+    "PLANE_WORKSPACE",
+    "PLANE_WORKSPACE_SLUG",
+  ]);
 
 const pick = (
   flag: string | undefined,

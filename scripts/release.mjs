@@ -137,7 +137,7 @@ const EXPECTED_FILES = [
 const MAX_TARBALL_KB = 200;
 const shipped = (packed.files ?? []).map((file) => file.path).sort();
 const unexpected = shipped.filter(
-  (path) => !EXPECTED_FILES.includes(path) && !/^dist\/chunks\/(?:cli|page-content)-[a-z0-9]{8}\.js$/.test(path),
+  (path) => !EXPECTED_FILES.includes(path) && !/^dist\/chunks\/(?:cli|page-content|session|session-config)-[a-z0-9]{8}\.js$/.test(path),
 );
 if (unexpected.length > 0) {
   throw new Error(`the package would ship files nobody declared: ${unexpected.join(", ")}`);

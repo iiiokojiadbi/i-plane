@@ -805,7 +805,7 @@ export const GROUPS: ReadonlyArray<Group> = [
   {
     title: "PAGES",
     summary:
-      "Project knowledge pages. All commands use the configured API key and require the for-plane API-key pages extension.",
+      "Project knowledge pages. Prefer API-key access; automatically use session sign-in on Plane without the extension.",
     commands: [
       {
         name: "pages",
@@ -814,7 +814,7 @@ export const GROUPS: ReadonlyArray<Group> = [
         options: [JSON_OPTION],
         examples: ["i-plane pages DEBUG"],
         notes: [
-          "Reads page metadata through the API-key pages endpoint. Page names accept exact or unique prefix matches; ambiguous names are errors.",
+          "Reads page metadata through the automatically selected API-key or session endpoint. Page names accept exact or unique prefix matches; ambiguous names are errors.",
         ],
         next: ['i-plane page show DEBUG "Project Design Spec"'],
       },
@@ -1061,7 +1061,7 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "config",
-        summary: "Which url, token and workspace are in effect, and where each came from.",
+        summary: "Resolved settings and the cached page access path, reason and expiry.",
         options: [JSON_OPTION],
         examples: ["i-plane config"],
       },
@@ -1088,7 +1088,7 @@ export const GROUPS: ReadonlyArray<Group> = [
 export const NOTES: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: "Pages have a live editing workflow",
-    body: "Use pages, page outline and page read --json before page set --block --if-match. Page commands require a login and password. Live acknowledgement confirms delivery; saved HTML can lag. Run page --help for examples.",
+    body: "Use pages, page outline and page read --json before page set --block --if-match. Pages prefer an API key; Plane without the extension needs PLANE_LOGIN and PLANE_PASSWORD. Live acknowledgement confirms delivery; saved HTML can lag. Run page --help for examples.",
   },
   {
     title: "Choose where the work belongs",
@@ -1193,6 +1193,15 @@ export const findCommand = (name: string): Command | undefined =>
 /** Flags every command accepts, whatever it is. */
 export const GLOBAL_OPTIONS: ReadonlyArray<Option> = [
   JSON_OPTION,
+  {
+    flag: "--refresh-pages",
+    summary: "Clear cached page access detection; the next page command probes again.",
+  },
+  {
+    flag: "--session-cache",
+    value: "<directory>",
+    summary: "Private session cache directory for Plane without API-key pages.",
+  },
   { flag: "--help", summary: "Show help." },
   { flag: "--version", summary: "Show the installed version." },
   { flag: "--url", value: "<url>", summary: "Plane base URL." },

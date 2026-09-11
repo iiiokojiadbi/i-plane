@@ -132,6 +132,7 @@ export const formatMembers = (members: ReadonlyArray<Member>): string =>
       ).join("\n");
 
 export interface ConfigReport {
+  readonly pages?: { mode: string; reason: string; expiresAt: string | null };
   readonly url: { value: string; origin: string };
   readonly workspace: { value: string; origin: string };
   readonly token: { value: string; origin: string };
@@ -152,6 +153,14 @@ export const formatConfig = (report: ConfigReport): string =>
       { name: "workspace", text: `${report.workspace.value}  (${report.workspace.origin})` },
       { name: "token", text: `${report.token.value}  (${report.token.origin})` },
       { name: "file", text: report.configPath },
+      ...(report.pages
+        ? [
+            {
+              name: "pages",
+              text: `${report.pages.mode}: ${report.pages.reason}${report.pages.expiresAt ? ` Valid until ${report.pages.expiresAt}.` : ""}`,
+            },
+          ]
+        : []),
     ],
     "",
   ).join("\n");

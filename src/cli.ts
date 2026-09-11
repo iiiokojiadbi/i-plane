@@ -22,7 +22,9 @@ import { peekToken, resolveConfig } from "./config.ts";
 import { dispatchCommand } from "./dispatch.ts";
 import { needsProxy, proxyFetch, reExecWithProxy } from "./http.ts";
 import { fail, guardSecret, printValue } from "./output.ts";
+import { pageTransportReport } from "./page-cache.ts";
 import { dispatchPageCommand, isPageCommand } from "./page-dispatch.ts";
+import { AutoPageClient } from "./page-transport.ts";
 import {
   commandFamily,
   findCommand,
@@ -164,7 +166,7 @@ const main = async (): Promise<void> => {
       workspace: flagValue(args, "workspace"),
       configPath: flagValue(args, "config"),
     },
-    commandName === "config",
+    commandName === "config" || isPageCommand(commandName),
   );
 
   // The resolved token may differ from what was visible early on.
@@ -177,7 +179,14 @@ const main = async (): Promise<void> => {
   // config comes after resolveConfig on purpose: its job is to explain what was
   // resolved, including a value that turned out to be wrong.
   if (command === "config") {
-    printValue(configReport(config), json, formatConfig);
+    printValue(
+      {
+        ...configReport(config),
+        pages: await pageTransportReport(config.url.value, flagBool(args, "refresh-pages")),
+      },
+      json,
+      formatConfig,
+    );
     return;
   }
 
@@ -190,8 +199,18 @@ const main = async (): Promise<void> => {
   }
 
   const client = new PlaneClient(config);
+  const sessionDirectory = flagValue(args, "session-cache");
 
-  if (isPageCommand(commandName)) await dispatchPageCommand(commandName, client, args, json);
+  if (isPageCommand(commandName))
+    await dispatchPageCommand(
+      commandName,
+      new AutoPageClient(config, {
+        refresh: flagBool(args, "refresh-pages"),
+        ...(sessionDirectory ? { sessionDirectory } : {}),
+      }),
+      args,
+      json,
+    );
   else await dispatchCommand(command, client, args, config, json);
 };
 

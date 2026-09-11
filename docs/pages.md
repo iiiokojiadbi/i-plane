@@ -1,14 +1,12 @@
 # Project pages
 
 Read project knowledge as Markdown, then change a section without rewriting the
-rest of the document. Page metadata uses the API-key pages endpoint; content
+rest of the document. Page metadata uses an automatically selected API-key or session endpoint; content
 changes use the collaborative live editor.
 
 ## Connect
 
-Page commands require a Plane deployment with the for-plane API-key pages
-extension enabled. Stock Plane does not expose this access path. Configure the
-same three settings used for work items:
+Configure the same settings used for work items:
 
 ```ini
 PLANE_URL=https://plane.example.com
@@ -16,15 +14,57 @@ PLANE_WORKSPACE=workspace
 PLANE_API_KEY=your-api-key
 ```
 
-`i-plane config` reports each setting's source and masks the key. HTTP and live
-connections use that key; the server derives the user and checks current page
-permissions. Read commands request read-only live access. HTTP and WebSocket
-connections honor `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
+The CLI first tries the public project-page list with the API key. With the
+for-plane API-key pages extension enabled, HTTP and live use that key. Login,
+password and session-cache settings are not resolved or loaded on this path.
+The server derives identity and checks page permissions; read commands request
+read-only live access. Both transports honor `HTTPS_PROXY`, `HTTP_PROXY` and
+`NO_PROXY`.
 
-Version 2 removes password sign-in, cookie caching and automatic reauthentication.
-Legacy login, password and cache settings are ignored. Old cache files are never
-opened or migrated. There is no fallback on installations without the extension.
-A rejected or uncertain write is never replayed automatically.
+On stock Plane, a missing public list route selects the native session API.
+Configure these additional values in the credentials file or environment:
+
+```ini
+PLANE_LOGIN=reader@example.com
+PLANE_PASSWORD=your-password
+```
+
+Password sign-in must be enabled on the server. Session-only page access also
+works without an API key; other commands still require one. The CLI reports
+missing session settings before attempting sign-in. Session cookies are cached
+privately (directory mode 700, file mode 600), keyed by instance URL and login.
+`PLANE_SESSION_CACHE` or `--session-cache <directory>` changes their location;
+the default is `$XDG_CACHE_HOME/i-plane/sessions` or `~/.cache/i-plane/sessions`.
+Passwords are never stored in the cookie cache.
+
+### Detection and diagnostics
+
+`i-plane config` is offline: it reports settings, masks the API key and shows the
+cached page access path, its reason and expiry. Before the first page command,
+or after expiry, it reports `unknown` rather than claiming a network check.
+
+Capability detection is cached per instance URL for **five minutes**, independently
+of the cookie cache. The cache contains no credentials. It defaults to
+`$XDG_CACHE_HOME/i-plane/page-transports` or `~/.cache/i-plane/page-transports`;
+`PLANE_PAGE_CACHE` can override the directory. Missing, expired, invalid or
+unwritable cache files do not prevent detection. After installing extensions,
+force immediate discovery with `i-plane pages APP --refresh-pages`, or clear the
+selection with `i-plane config --refresh-pages`. No manual transport switch is needed.
+A newly configured key rechecks a selection previously made without a key.
+
+A `401`, `403`, network failure or server error never selects session fallback.
+Only a page **list** `404` triggers a capability check; a missing individual page
+stays a missing page. If the runtime reports API-key pages enabled, even a list
+`404` remains an access/project error. An absent runtime route or explicitly
+unavailable API-key feature permits the session path. Cached choices can remain
+stale within the five-minute window; use `--refresh-pages` after server changes.
+
+The session path refreshes authentication once on an HTTP `401` or a definite
+live authentication refusal **before synchronization**. Other errors do not retry.
+Live content changes and uncertain writes are never replayed automatically.
+Stock Plane determines the permissions of session live connections; the CLI's
+read commands do not mutate documents. API-key connections require the current
+runtime release; session live connections negotiate it too when present.
 
 ## Read, inspect, edit
 

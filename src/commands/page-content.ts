@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { flagBool, flagValue, type ParsedArgs, UsageError } from "../args.ts";
-import type { PlaneClient } from "../client.ts";
 import { PlaneError } from "../client.ts";
 import { printValue, scrub } from "../output.ts";
 import {
@@ -12,6 +11,7 @@ import {
 } from "../page-document.ts";
 import { allowLosses, editDocument } from "../page-edit.ts";
 import { openLive } from "../page-live.ts";
+import type { PageClient } from "../page-transport.ts";
 import { required, requiredFlag } from "../validation.ts";
 import { type Page, pageOf, pagesPath, projectOfPage, requireWritablePage } from "./page-data.ts";
 
@@ -43,7 +43,7 @@ const receipt = (result: {
 
 export const runPageContent = async (
   command: string,
-  client: PlaneClient,
+  client: PageClient,
   args: ParsedArgs,
   json: boolean,
 ): Promise<void> => {

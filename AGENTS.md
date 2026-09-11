@@ -160,12 +160,21 @@ provider-neutral; follow the shared authorship policy for commit trailers.
 
 ## Page command invariants
 
-Page commands share PlaneClient and API-key configuration with other commands.
-Never restore password login, cookie caching or authentication retries. The live
-connection sends the API key, explicit read/write intent and the runtime release.
-Load Yjs, the live provider and WebSocket dependencies lazily, with exact versions
-external in both build paths. Guard the API key and its serialized forms before
-diagnostics. Page commands require the matching for-plane server extensions.
+Page commands use AutoPageClient; other commands retain PlaneClient. Prefer the
+public API-key page list and load session configuration lazily only after selecting
+the native fallback. A list 404 requires checking runtime capabilities; 401/403,
+server/transport failures and detail-page 404 must never select fallback. Cache
+capabilities per instance, never permissions, with bounded expiry and explicit
+refresh. Keep config diagnostics offline and accurate about an unknown selection.
+
+The session path supports password sign-in and private cookie caching for stock
+Plane. Refresh once only on a definite HTTP 401 or live authentication refusal
+before synchronization; never retry uncertain writes or replay a live mutation.
+API-key access must not resolve session credentials. Load Yjs, the live provider,
+WebSocket and session dependencies lazily, with exact live versions external in
+both build paths. Guard every credential and its serialized forms before output.
+The API-key live connection sends explicit read/write intent and the current
+runtime release; session live connections include a release when one is present.
 
 Live success means acknowledged delivery, not a database commit. Never replay a
 mutation automatically. Complete asynchronous conversion before resolving a

@@ -115,7 +115,4 @@ test("CLI config exposes one access source and offline diagnostics guard the key
   expect(invalid.status).toBe(2);
   expect(invalid.stderr).not.toContain(key);
   expect(invalid.stderr).toContain("[token]");
-  const missing = spawnSync("bun", ["src/cli.ts", "pages", "APP"], { env: { ...env, PLANE_API_KEY: "", PLANE_TOKEN: "" }, encoding: "utf8" });
-  expect(missing.status).toBe(2);
-  expect(missing.stderr).toContain("PLANE_API_KEY");
 });
