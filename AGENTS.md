@@ -10,11 +10,9 @@ A Plane CLI for coding agents and automation. Compact, predictable output is a
 product requirement: callers should not need large REST responses or an
 interactive terminal to understand and update their work.
 
-## Authorship
-
-Developed by the repository owner with contributions from Claude (Anthropic)
-and Codex (OpenAI). Record authorship per commit and preserve each collaborator's
-credit. The repository owner decides the scope and approves releases.
+Track CLI work in Plane project `IPL`. Server-side extension work belongs to
+`PLX` in the sibling `for-plane` repository. Keep the public command contract and
+its matching server requirements documented in `docs/pages.md`.
 
 ## Invariants
 
@@ -157,14 +155,17 @@ are available.
 Keep project task statuses aligned with the work. Move a task into progress when
 starting, close it after its checks, and reopen it when a confirmed review finding
 invalidates completion. Report whether a change is local, installed or published;
-these are separate states. Keep commits and public metadata provider-agnostic.
+these are separate states. Keep implementation and public product documentation
+provider-neutral; follow the shared authorship policy for commit trailers.
 
 ## Page command invariants
 
-Page commands use SessionClient, never the API-key client. Load Yjs, the live
-provider and WebSocket dependencies lazily; keep their exact versions external
-in both build paths. Session cookies and passwords join the API token in the
-secret guard, including old cookies after a refresh.
+Page commands share PlaneClient and API-key configuration with other commands.
+Never restore password login, cookie caching or authentication retries. The live
+connection sends the API key, explicit read/write intent and the runtime release.
+Load Yjs, the live provider and WebSocket dependencies lazily, with exact versions
+external in both build paths. Guard the API key and its serialized forms before
+diagnostics. Page commands require the matching for-plane server extensions.
 
 Live success means acknowledged delivery, not a database commit. Never replay a
 mutation automatically. Complete asynchronous conversion before resolving a
@@ -177,3 +178,8 @@ accepts reported conversion losses. These decisions must stay separate. Empty
 
 Page fixtures and wire tests live under tests/page*. Unsupported rich content
 must remain visible or produce an explicit loss warning.
+
+Knowledge review blocks use the reserved `knowledge-review` fenced JSON format.
+Preserve date/source values through a real converter round trip. Invalid dates,
+unknown input fields and lost rich content must fail or report explicit losses.
+Keep `scripts/page-mutations.mjs` able to detect broken transformations.
