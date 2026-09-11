@@ -64,7 +64,11 @@ live authentication refusal **before synchronization**. Other errors do not retr
 Live content changes and uncertain writes are never replayed automatically.
 Stock Plane determines the permissions of session live connections; the CLI's
 read commands do not mutate documents. API-key connections require the current
-runtime release; session live connections negotiate it too when present.
+runtime release; session live connections negotiate it too when present. An adapter
+with no installed runtime package retains stock session live access. When detection
+changes the identity to a session user, project references are resolved again under
+that user before reading or writing pages, so cold and cached commands target the
+same project.
 
 ## Read, inspect, edit
 
@@ -123,7 +127,7 @@ resolution uses that list. The CLI does not expose a `--parent` option.
 ## Delivery and formatting
 
 Successful editing means **the live server acknowledged delivery**. It does not
-confirm a database commit. `page show` reads saved HTML and can immediately show
+confirm a database commit. `page show` reads saved HTML, preserves semantic review fences and reports unsupported rich content in JSON `losses` and stderr warnings. It can immediately show
 the previous content: persistence usually takes about ten seconds, with no
 guaranteed upper bound. Use `page outline` and `page read` to check the immediate
 live result. An interrupted write without an acknowledgement reports uncertain

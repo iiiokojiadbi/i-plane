@@ -166,6 +166,10 @@ the native fallback. A list 404 requires checking runtime capabilities; 401/403,
 server/transport failures and detail-page 404 must never select fallback. Cache
 capabilities per instance, never permissions, with bounded expiry and explicit
 refresh. Keep config diagnostics offline and accurate about an unknown selection.
+If detection changes identity, resolve the original project reference again before
+any page operation; cold and cached commands must target the same project. Treat
+non-regular cache entries without blocking on open. An adapter without a runtime
+package must retain stock session live access.
 
 The session path supports password sign-in and private cookie caching for stock
 Plane. Refresh once only on a definite HTTP 401 or live authentication refusal
@@ -191,4 +195,7 @@ must remain visible or produce an explicit loss warning.
 Knowledge review blocks use the reserved `knowledge-review` fenced JSON format.
 Preserve date/source values through a real converter round trip. Invalid dates,
 unknown input fields and lost rich content must fail or report explicit losses.
-Keep `scripts/page-mutations.mjs` able to detect broken transformations.
+Keep `scripts/page-mutations.mjs` able to detect broken transformations. Saved HTML
+reads (`page show`) share the semantic review/loss contract with live block reads.
+Keep page-specific conversion separate from work-item/comment Markdown conversion;
+exercise the actual `page show` output in whole-page write regression checks.

@@ -114,3 +114,37 @@ test("raw review HTML remains escaped and extra fence info is rejected", async (
     await expect(prepareMarkdown(client, `\`\`\`knowledge-review${separator}extra\n{}\n\`\`\``)).rejects.toThrow("additional info fields");
   expect(requests).toBe(1);
 });
+
+test("saved HTML page reads preserve review semantics independently of live dependencies", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const page = pageDetail({ id: "page", name: "Page", description_html: `<p>Before</p>${fixture.response.description_html}<p>After</p>` });
+  expect(page.markdown).toBe(`Before\n\n${fixture.markdown}\n\nAfter`);
+  expect(page.losses).toEqual([]);
+  const prepared = await prepareMarkdown({ request: async () => fixture.response } as unknown as PlaneClient, fixture.markdown);
+  documents.push(prepared.doc);
+  const node = prepared.fragment.get(0) as Y.XmlElement;
+  expect(node.nodeName).toBe("knowledgeReview");
+  expect(node.getAttribute("source")).toBe(fixture.review.source);
+});
+
+test("saved page reads expose unsupported content and invalid review metadata", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  const page = pageDetail({ id: "page", name: "Page", description_html: `${fixture.html}<mention-component entity_identifier="person">Name</mention-component>` });
+  expect(page.markdown).toContain(fixture.markdown);
+  expect(page.markdown).toContain('entity_identifier="person"');
+  expect(page.losses.join(" ")).toContain("Unsupported page HTML element mention-component");
+  const invalid = pageDetail({ id: "page", name: "Page", description_html: fixture.html.replace('2026-09-11', '2026-02-30') });
+  expect(invalid.losses.join(" ")).toContain("Review metadata is invalid");
+  expect(invalid.markdown).toContain("2026-02-30");
+});
+
+test("saved review secrets and unexpected semantic attributes produce explicit losses", async () => {
+  const { pageDetail } = await import("../src/commands/page-data.ts");
+  guardSecret(fixture.review.source);
+  const page = pageDetail({ id: "page", name: "Page", description_html: fixture.html });
+  expect(page.markdown).toContain("[token]");
+  expect(page.losses.join(" ")).toContain("Sensitive page content");
+  guardSecret("");
+  const extra = pageDetail({ id: "page", name: "Page", description_html: fixture.html.replace("<div", '<div data-extra="future"') });
+  expect(extra.losses.join(" ")).toContain("Additional review attributes");
+});

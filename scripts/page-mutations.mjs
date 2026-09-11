@@ -9,6 +9,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), "i-plane-mutations-"));
 const fixture = JSON.parse(await readFile(join(root, "tests/fixtures/pages/heading.json"), "utf8"));
 const cases = [
+  ["page show drops review metadata", "src/page-html.ts", "return reviewCodeHtml({ date, source });", 'return "<p>Review omitted</p>";'],
   ["fallback on permission refusal", "src/page-transport.ts", "error.status !== 404", "error.status !== 403"],
   ["capability cache never expires", "src/page-cache.ts", "value.expiresAt <= now", "false"],
   ["review input replaced by a paragraph", "src/page-document.ts", "reviewHtml(review)", '"<p>Review omitted</p>"'],

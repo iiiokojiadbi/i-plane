@@ -1,6 +1,6 @@
 import { type ParsedArgs, UsageError } from "./args.ts";
 import { formatPages, pageDetail, pageOf, pagesOf, projectOfPage } from "./commands/page-data.ts";
-import { printValue } from "./output.ts";
+import { printValue, warn } from "./output.ts";
 import type { PageClient } from "./page-transport.ts";
 import { required } from "./validation.ts";
 
@@ -31,7 +31,9 @@ export const PAGE_HANDLERS: Readonly<Record<string, Handler>> = {
     const projectRef = required(args.positionals[0], "a project");
     const ref = required(args.positionals[1], "a page UUID or name");
     const project = await projectOfPage(client, projectRef);
-    printValue(pageDetail(await pageOf(client, project.id, ref)), json, (page) => page.markdown);
+    const result = pageDetail(await pageOf(client, project.id, ref));
+    if (result.losses.length) warn(`Warning: ${result.losses.join("; ")}`);
+    printValue(result, json, (page) => page.markdown);
   },
 };
 export const isPageCommand = (command: string): boolean =>

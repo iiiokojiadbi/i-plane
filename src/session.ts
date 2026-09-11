@@ -38,7 +38,7 @@ export const cacheFile = (baseUrl: string, login: string, directory: string): st
 
 const loadSession = async (path: string): Promise<Session | undefined> => {
   try {
-    const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     let value: Session & { version?: number };
     try {
       const info = await file.stat();

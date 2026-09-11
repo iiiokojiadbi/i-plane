@@ -214,3 +214,34 @@ test("instance cache canonicalizes default ports and trailing slashes", async ()
   await cache().write("api-key", "public-list", true, true);
   expect((await new PageCapabilityCache("https://plane.test:443/", directory, () => now).read())?.mode).toBe("api-key");
 });
+
+test("cold and cached session selection resolve project names under the same identity", async () => {
+  const { projectOfPage } = await import("../src/commands/page-data.ts");
+  credentials(); runtime = false; publicStatus = 404;
+  const fetcher = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    const path = new URL(String(url)).pathname;
+    if (path === "/api/v1/workspaces/workspace/projects/") return Response.json([{ id: "account-a-project", name: "Knowledge", identifier: "KA" }]);
+    if (path === "/api/workspaces/workspace/projects/") return Response.json([{ id: "account-b-project", name: "Knowledge", identifier: "KB" }]);
+    if (path === "/api/v1/workspaces/workspace/projects/account-a-project/pages/") return new Response(null, { status: 404 });
+    return fetcher(url, init);
+  }) as typeof fetch;
+  expect((await projectOfPage(client(), "Knowledge")).id).toBe("account-b-project");
+  expect((await projectOfPage(client(), "Knowledge")).id).toBe("account-b-project");
+});
+
+test("capability cache ignores FIFOs without waiting for a writer", async () => {
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("mkfifo", [cache().path]);
+  expect(await cache().read()).toBeUndefined();
+});
+test("adapter with no installed package keeps stock session live available", async () => {
+  credentials(); publicStatus = 404;
+  const stub = await server(); config.url.value = stub.url;
+  const fetcher = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => String(url).endsWith(runtimePath) ? Response.json({ release: null, extensions: [] }) : fetcher(url, init)) as typeof fetch;
+  const selected = client();
+  const live = await openLive(selected, "project", "page"); live.destroy();
+  expect((await cache().read())?.mode).toBe("session");
+  expect(new URL(stub.authentications[0]!.url, stub.url).searchParams.has("forPlaneRelease")).toBe(false);
+});

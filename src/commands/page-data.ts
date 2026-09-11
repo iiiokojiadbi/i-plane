@@ -1,9 +1,9 @@
 import { PlaneError } from "../client.ts";
 import { scrubHtml } from "../html-secrets.ts";
 import { oneLine, printColumns } from "../output.ts";
+import { pageHtmlToMarkdown } from "../page-html.ts";
 import type { PageClient } from "../page-transport.ts";
 import { isUuid, resolveNamed } from "../resolve.ts";
-import { htmlToMarkdown } from "../richtext.ts";
 import type { Project } from "../types.ts";
 
 export interface Page {
@@ -27,7 +27,8 @@ export const projectOfPage = async (client: PageClient, ref: string): Promise<Pr
     result =
       matches.length === 1 && matches[0] ? matches[0] : resolveNamed(projects, ref, "project");
   }
-  await client.preparePages?.(result.id);
+  if ((await client.preparePages?.(result.id)) === "changed-identity")
+    return projectOfPage(client, ref);
   return result;
 };
 export const pagesPath = (projectId: string): string => `projects/${projectId}/pages/`;
@@ -58,6 +59,6 @@ export const pageDetail = (page: Page) => {
   return {
     ...page,
     description_html: page.description_html == null ? page.description_html : html,
-    markdown: htmlToMarkdown(html),
+    ...pageHtmlToMarkdown(page.description_html ?? ""),
   };
 };

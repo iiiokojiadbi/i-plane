@@ -1,6 +1,9 @@
 declare module "@mixmark-io/domino" {
   export interface HtmlNode {
     nodeType: number;
+    tagName?: string;
+    textContent?: string;
+    outerHTML?: string;
     nodeValue: string | null;
     childNodes: ArrayLike<HtmlNode>;
     attributes?: ArrayLike<{ name: string; value: string }>;

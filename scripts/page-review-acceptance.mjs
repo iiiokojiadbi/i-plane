@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
 
 const [origin, fixturePath, output] = process.argv.slice(2);
 if (!origin || !fixturePath || !output)
@@ -57,7 +58,19 @@ try {
   report.checks.push("Review read returns exact date/source Markdown without losses");
   await mkdir(output, { recursive: true });
   const inputPath = join(output, "roundtrip.md");
-  await writeFile(inputPath, `Full replacement heading\n\n${block.markdown}\n\nTail paragraph`);
+  // Exercise the user-visible whole-page read, not a block read substituted for it.
+  let snapshot;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    snapshot = await cli("page", "show", fixture.project_id, created.id);
+    if (snapshot.markdown.includes(markdown)) break;
+    await delay(1000);
+  }
+  assert.ok(snapshot.markdown.includes(markdown));
+  assert.deepEqual(snapshot.losses, []);
+  const printed = await execute(process.execPath, [join(root, "dist/cli.js"), "page", "show", fixture.project_id, created.id], { env, timeout: 45000 });
+  assert.equal(printed.stderr, "");
+  await writeFile(inputPath, `Full replacement heading\n\n${printed.stdout.trim()}\n\nTail paragraph`);
+  report.checks.push("Saved HTML page show emits exact semantic review Markdown");
   const written = await cli("page", "set", fixture.project_id, created.id, "--file", inputPath);
   assert.equal(written.delivery, "acknowledged");
   assert.deepEqual(written.losses, []);
@@ -89,6 +102,27 @@ try {
   assert.equal(attributes.reviewedAt, review.date);
   assert.equal(attributes.source, review.source);
   report.checks.push("Persisted review reloads in the native browser with exact attributes");
+  await page.locator('.tiptap[contenteditable="true"]').last().evaluate((element) => {
+    const editor = element.editor;
+    const paragraph = editor.schema.nodes.paragraph.create(null,
+      editor.schema.text("Unsupported underline probe", [editor.schema.marks.underline.create()]));
+    editor.commands.insertContentAt(editor.state.doc.content.size, paragraph.toJSON());
+  });
+  let unsupported;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    unsupported = await cli("page", "show", fixture.project_id, created.id);
+    if (unsupported.markdown.includes("Unsupported underline probe")) break;
+    await delay(1000);
+  }
+  assert.ok(unsupported.markdown.includes("Unsupported underline probe"));
+  assert.ok(unsupported.losses.length > 0);
+  assert.ok(unsupported.markdown.includes(markdown));
+  const lossyInput = join(output, "unsupported.md");
+  await writeFile(lossyInput, unsupported.markdown);
+  await assert.rejects(cli("page", "set", fixture.project_id, created.id, "--file", lossyInput),
+    error => error.code === 2 && error.stderr.includes("--allow-loss"));
+  assert.ok((await cli("page", "outline", fixture.project_id, created.id)).some(row => row.kind === "knowledgeReview"));
+  report.checks.push("Unsupported rich content is reported on page show and replacement requires explicit loss approval");
   await mkdir(output, { recursive: true });
   await page.screenshot({ path: join(output, "document.png"), fullPage: true });
   assert.deepEqual(report.errors, []);

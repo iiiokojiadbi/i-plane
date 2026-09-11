@@ -34,7 +34,10 @@ export class PageCapabilityCache {
   }
   async read(): Promise<PageCapability | undefined> {
     try {
-      const file = await open(this.path, constants.O_RDONLY | constants.O_NOFOLLOW);
+      const file = await open(
+        this.path,
+        constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+      );
       try {
         const info = await file.stat();
         if (!info.isFile() || info.size > 2048 || info.mode & 0o077) return undefined;

@@ -12,7 +12,7 @@ export interface PageClient {
   readonly config: Config;
   request<T>(path: string, options?: RequestOptions): Promise<T>;
   listAll<T>(path: string, options?: RequestOptions): Promise<ReadonlyArray<T>>;
-  preparePages?(projectId: string): Promise<void>;
+  preparePages?(projectId: string): Promise<"changed-identity" | undefined>;
   liveCredentials?(writable: boolean, refresh?: boolean): Promise<LiveCredentials | undefined>;
 }
 interface RuntimeConfiguration {
@@ -58,7 +58,7 @@ export class AutoPageClient implements PageClient {
       !value.extensions.every(
         (entry) => entry && typeof entry.id === "string" && typeof entry.enabled === "boolean",
       ) ||
-      !(value.release === null || typeof value.release === "string")
+      !(value.release === null || (typeof value.release === "string" && value.release.length > 0))
     )
       throw new PlaneError("Invalid extension configuration; page access could not be determined.");
     return value;
@@ -108,9 +108,10 @@ export class AutoPageClient implements PageClient {
     return this.sessionClient;
   }
 
-  async preparePages(projectId: string): Promise<void> {
+  async preparePages(projectId: string): Promise<"changed-identity" | undefined> {
     await this.initialize();
     if (this.prepared.has(projectId)) return;
+    const initialMode = this.selection?.mode ?? "api-key";
     if (!this.selection) {
       const path = `projects/${projectId}/pages/`;
       try {
@@ -125,6 +126,7 @@ export class AutoPageClient implements PageClient {
     }
     if (this.selection?.mode === "session") await this.session();
     this.prepared.add(projectId);
+    if (initialMode !== this.selection?.mode) return "changed-identity";
   }
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -198,7 +200,7 @@ export class AutoPageClient implements PageClient {
     const session = await client.session(refresh);
     // Always negotiate the current release, including an upgrade within the cache TTL.
     const runtime = await this.runtime();
-    if (runtime && !runtime.release)
+    if (runtime && !runtime.release && runtime.extensions.length)
       throw new PlaneError("The for-plane runtime has no active extension release.");
     return {
       token: JSON.stringify({

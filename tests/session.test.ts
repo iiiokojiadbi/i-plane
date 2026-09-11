@@ -267,3 +267,12 @@ test("session network and server failures do not refresh or replay writes", asyn
     expect(mutations).toBe(1); expect(stub.logins()).toBe(1);
   }
 });
+
+test("session cache ignores FIFOs and obtains a fresh authenticated session", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const stub = transport();
+  const client = new SessionClient(config());
+  execFileSync("mkfifo", [client.cachePath]);
+  expect((await client.session()).userId).toBe("user-id");
+  expect(stub.logins()).toBe(1);
+});
