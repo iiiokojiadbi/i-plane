@@ -18,7 +18,7 @@ import {
   guideReport,
 } from "./commands/guide.ts";
 import { configReport, formatConfig } from "./commands/workspace.ts";
-import { peekToken, resolveConfig, resolveSessionConfig, sessionSettings } from "./config.ts";
+import { peekToken, resolveConfig } from "./config.ts";
 import { dispatchCommand } from "./dispatch.ts";
 import { needsProxy, proxyFetch, reExecWithProxy } from "./http.ts";
 import { fail, guardSecret, printValue } from "./output.ts";
@@ -30,9 +30,8 @@ import {
   GLOBAL_OPTIONS,
   knownFlags,
 } from "./registry.ts";
-import { guardCachedSessions, inspectSession, SessionClient } from "./session.ts";
 
-const VERSION = "1.2.0";
+const VERSION = "2.0.0";
 
 /** Remembered so a failure can be answered with that command's own hint. */
 let current: string | undefined;
@@ -155,37 +154,9 @@ const main = async (): Promise<void> => {
     configPath: flagValue(args, "config"),
   });
   if (early !== undefined) guardSecret(early);
-  const settings = sessionSettings(
-    { configPath: flagValue(args, "config") },
-    flagValue(args, "session-cache"),
-  );
-  if (settings.password) guardSecret(settings.password.value);
-  await guardCachedSessions(settings.cacheDirectory);
-
   if (runOffline(args, json)) return;
 
   const commandName = args.path.join(" ");
-  if (isPageCommand(commandName)) {
-    current = commandName;
-    const pageConfig = resolveSessionConfig(
-      {
-        url: flagValue(args, "url"),
-        workspace: flagValue(args, "workspace"),
-        configPath: flagValue(args, "config"),
-      },
-      flagValue(args, "session-cache"),
-    );
-    if (
-      needsProxy(pageConfig.url.value) &&
-      (await proxyFetch(pageConfig.url.value)) === undefined
-    ) {
-      const code = await reExecWithProxy(pageConfig.url.value);
-      if (code !== undefined) process.exit(code);
-    }
-    await dispatchPageCommand(commandName, new SessionClient(pageConfig), args, json);
-    return;
-  }
-
   const config = resolveConfig(
     {
       url: flagValue(args, "url"),
@@ -206,16 +177,7 @@ const main = async (): Promise<void> => {
   // config comes after resolveConfig on purpose: its job is to explain what was
   // resolved, including a value that turned out to be wrong.
   if (command === "config") {
-    const report = {
-      ...configReport(config),
-      session: await inspectSession(config.url.value, settings),
-    };
-    printValue(
-      report,
-      json,
-      (value) =>
-        `${formatConfig(value)}\nsession    ${value.session.state}\nlogin      ${value.session.login.configured ? `configured (${value.session.login.origin})` : "not configured"}\npassword   ${value.session.password.configured ? `configured (${value.session.password.origin})` : "not configured"}\ncache      ${value.session.cacheDirectory}`,
-    );
+    printValue(configReport(config), json, formatConfig);
     return;
   }
 
@@ -229,7 +191,8 @@ const main = async (): Promise<void> => {
 
   const client = new PlaneClient(config);
 
-  await dispatchCommand(command, client, args, config, json);
+  if (isPageCommand(commandName)) await dispatchPageCommand(commandName, client, args, json);
+  else await dispatchCommand(command, client, args, config, json);
 };
 
 main().catch((error: unknown) => {

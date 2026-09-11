@@ -41,7 +41,7 @@ export const closeServers = () => {
   for (const close of cleanups.splice(0).reverse()) close();
 };
 export const server = async (
-  mode: "normal" | "before" | "uncertain" | "after" | "readonly" | "no-ack" = "normal",
+  mode: "normal" | "before" | "uncertain" | "after" | "readonly" | "no-ack" | "denied" = "normal",
 ) => {
   const doc = new Y.Doc(),
     fragment = doc.getXmlFragment("default");
@@ -49,8 +49,9 @@ export const server = async (
     updates = 0;
   const wss = new WebSocketServer({ port: 0, host: "127.0.0.1" });
   await new Promise<void>((resolve) => wss.once("listening", resolve));
+  const authentications: Array<{ url: string; token: string }> = [];
   const names = new Map<WebSocket, string>();
-  wss.on("connection", (socket) => {
+  wss.on("connection", (socket, request) => {
     connections++;
     if (mode === "before") {
       socket.close();
@@ -62,6 +63,13 @@ export const server = async (
         kind = r.uint();
       names.set(socket, name);
       if (kind === 2) {
+        r.uint();
+        const token = r.string();
+        authentications.push({ url: request.url ?? "", token });
+        if (mode === "denied") {
+          socket.send(packet(name, [2, 1], string("Rejected")));
+          return;
+        }
         socket.send(packet(name, [2, 2], string(mode === "readonly" ? "readonly" : "read-write")));
         return;
       }
@@ -101,7 +109,7 @@ export const server = async (
       const live = new LiveDocument(
         `ws://127.0.0.1:${port}/live/collaboration?documentType=project_page&projectId=p&workspaceSlug=w`,
         "page",
-        "session-secret",
+        '{"apiKey":"api-secret"}',
         500,
       );
       cleanups.push(() => live.destroy());
@@ -113,6 +121,7 @@ export const server = async (
   };
   return {
     connect,
+    authentications,
     fragment,
     url: `http://127.0.0.1:${port}`,
     connections: () => connections,

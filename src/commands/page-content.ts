@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { flagBool, flagValue, type ParsedArgs, UsageError } from "../args.ts";
+import type { PlaneClient } from "../client.ts";
 import { PlaneError } from "../client.ts";
 import { printValue, scrub } from "../output.ts";
 import {
@@ -11,7 +12,6 @@ import {
 } from "../page-document.ts";
 import { allowLosses, editDocument } from "../page-edit.ts";
 import { openLive } from "../page-live.ts";
-import type { SessionClient } from "../session.ts";
 import { required, requiredFlag } from "../validation.ts";
 import { type Page, pageOf, pagesPath, projectOfPage, requireWritablePage } from "./page-data.ts";
 
@@ -43,7 +43,7 @@ const receipt = (result: {
 
 export const runPageContent = async (
   command: string,
-  client: SessionClient,
+  client: PlaneClient,
   args: ParsedArgs,
   json: boolean,
 ): Promise<void> => {
@@ -114,7 +114,7 @@ export const runPageContent = async (
     }
     const reading = command === "page outline" || command === "page read";
     if (!reading) requireWritablePage(page);
-    const live = await openLive(client, project.id, page.id);
+    const live = await openLive(client, project.id, page.id, { writable: !reading });
     try {
       if (command === "page outline") {
         printValue(outline(live.fragment), json, (rows) =>

@@ -102,9 +102,9 @@ API endpoints; the diagnostic points to `issueId` from an earlier JSON response.
 
 ## Project pages
 
-`pages` and `page show` use the internal session API. `page outline`, `page read`,
+`pages` and `page show` use the API-key pages endpoint. `page outline`, `page read`,
 `page stamp`, `page create`, `page set`, `page insert` and block removal use the
-live document protocol. Whole-page deletion uses the session API. See the
+live document protocol. Whole-page deletion uses the API-key pages endpoint. See the
 [page workflow](pages.md) for credentials, fingerprints, formatting losses and
 asynchronous persistence. This internal API can change independently of Plane's
 public API; compatibility is covered by converter fixtures and live acceptance.
@@ -113,7 +113,7 @@ public API; compatibility is covered by converter fixtures and live acceptance.
 
 1. Add the command and all options to `src/registry.ts`. The parser gets value
    flags from the registry, including those of multiword commands.
-2. Add an online handler to `src/dispatch.ts` or a session handler to `src/page-dispatch.ts`. Both missing handlers and handlers
+2. Add an online handler to `src/dispatch.ts` or a page handler to `src/page-dispatch.ts`. Both missing handlers and handlers
    absent from the registry fail the command-set test.
 3. Add a fixture invocation and valid option values to the registry suite. Test
    the requested method, path and body, and assert observable output. Merely
@@ -165,3 +165,18 @@ The page acceptance script creates and removes one page in the selected existing
 project. It exercises all nine commands and observes saved HTML within a bounded
 window; that window is a test limit, not a persistence guarantee. Run
 `node scripts/page-mutations.mjs` for isolated mutation checks.
+
+### API-key page transport
+
+All commands share `PlaneClient` and the same configuration. Page writes never
+fall back to password sign-in or retry authentication. The live connection sends
+`{apiKey, readOnly}` and the active extension release; the server derives identity
+and checks permissions before each operation. The converter also uses the common
+HTTP transport. Redirects are rejected so credentials cannot follow another origin.
+
+Run `node scripts/page-mutations.mjs` to check that the page tests detect intentional
+regressions. `scripts/page-key-acceptance.mjs` exercises a built CLI against an
+isolated deployment using a private test fixture and a browser. It creates a page,
+checks both writers, stale fingerprints and deletion, then removes the test page.
+The package ships command help and user documentation; repository-only contributor
+instructions are excluded from the release archive.

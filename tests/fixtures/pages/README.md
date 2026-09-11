@@ -16,6 +16,6 @@ about Markdown representation losses, and the writer checks converted content
 before changing the live document. Language attributes are repaired locally.
 
 Run `bun test tests/page-document.test.ts tests/page-live.test.ts
-tests/page-commands.test.ts tests/session.test.ts` for the focused suite, and
+tests/page-commands.test.ts tests/page-api-key.test.ts` for the focused suite, and
 `node scripts/page-mutations.mjs` to verify that five deliberate implementation
 faults fail those tests. Mutations run in an isolated temporary copy.

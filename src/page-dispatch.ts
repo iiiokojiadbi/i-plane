@@ -1,10 +1,10 @@
 import { type ParsedArgs, UsageError } from "./args.ts";
+import type { PlaneClient } from "./client.ts";
 import { formatPages, pageDetail, pageOf, pagesOf, projectOfPage } from "./commands/page-data.ts";
 import { printValue } from "./output.ts";
-import type { SessionClient } from "./session.ts";
 import { required } from "./validation.ts";
 
-type Handler = (client: SessionClient, args: ParsedArgs, json: boolean) => Promise<void>;
+type Handler = (client: PlaneClient, args: ParsedArgs, json: boolean) => Promise<void>;
 const contentHandler =
   (command: string): Handler =>
   async (client, args, json) => {
@@ -38,7 +38,7 @@ export const isPageCommand = (command: string): boolean =>
   command === "pages" || command.startsWith("page ");
 export const dispatchPageCommand = async (
   command: string,
-  client: SessionClient,
+  client: PlaneClient,
   args: ParsedArgs,
   json: boolean,
 ): Promise<void> => {

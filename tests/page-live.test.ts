@@ -75,7 +75,7 @@ test("missing ack times out with uncertainty instead of reporting saved", async 
     live.write((fragment) => fragment.insert(0, [new Y.XmlElement("paragraph")])),
   ).rejects.toThrow("uncertain");
 });
-test("read-only session cannot mutate and a no-op sends no update", async () => {
+test("read-only connection cannot mutate and a no-op sends no update", async () => {
   const stub = await server("readonly"),
     live = stub.connect();
   await live.ready();

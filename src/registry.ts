@@ -805,7 +805,7 @@ export const GROUPS: ReadonlyArray<Group> = [
   {
     title: "PAGES",
     summary:
-      "Project knowledge pages. Session authentication uses PLANE_LOGIN and PLANE_PASSWORD; no API key is needed.",
+      "Project knowledge pages. All commands use the configured API key and require the for-plane API-key pages extension.",
     commands: [
       {
         name: "pages",
@@ -814,7 +814,7 @@ export const GROUPS: ReadonlyArray<Group> = [
         options: [JSON_OPTION],
         examples: ["i-plane pages DEBUG"],
         notes: [
-          "Reads page metadata through the session API. Page names accept exact or unique prefix matches; ambiguous names are errors.",
+          "Reads page metadata through the API-key pages endpoint. Page names accept exact or unique prefix matches; ambiguous names are errors.",
         ],
         next: ['i-plane page show DEBUG "Project Design Spec"'],
       },
@@ -826,7 +826,7 @@ export const GROUPS: ReadonlyArray<Group> = [
         examples: ['i-plane page show DEBUG "Project Design Spec"'],
         notes: [
           "Reads saved HTML, which may lag behind the live editor, usually by about ten seconds with no guaranteed upper bound. Content is returned as Markdown.",
-          "Requires PLANE_LOGIN and PLANE_PASSWORD from the environment or credentials file. API-key-only configuration is insufficient.",
+          "Requires PLANE_URL, PLANE_WORKSPACE and PLANE_API_KEY, as with other commands.",
         ],
         next: ["i-plane pages DEBUG"],
       },
@@ -1199,11 +1199,6 @@ export const GLOBAL_OPTIONS: ReadonlyArray<Option> = [
   { flag: "--token", value: "<token>", summary: "API token." },
   { flag: "--workspace", value: "<slug>", summary: "Workspace slug." },
   { flag: "--config", value: "<path>", summary: "Credentials file." },
-  {
-    flag: "--session-cache",
-    value: "<directory>",
-    summary: "Private session cache directory; also PLANE_SESSION_CACHE.",
-  },
 ];
 
 export const GLOBAL_FLAGS: ReadonlyArray<string> = GLOBAL_OPTIONS.map((option) =>

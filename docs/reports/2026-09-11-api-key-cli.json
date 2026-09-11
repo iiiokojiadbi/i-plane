@@ -1,0 +1,15 @@
+{
+  "version": {
+    "version": "2.0.0"
+  },
+  "checks": [
+    "API-key page creation and live content",
+    "CLI block replacement appears in the open browser",
+    "Stale fingerprint rejects the write",
+    "CLI reads browser changes from the live document",
+    "Insertion, block deletion and explicit stamping",
+    "Metadata reads and browser reload preserve both writers",
+    "Archive followed by whole-page deletion"
+  ],
+  "errors": []
+}

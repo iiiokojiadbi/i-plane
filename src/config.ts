@@ -54,6 +54,16 @@ const readCredentials = (path: string): Map<string, string> => {
     const eq = trimmed.indexOf("=");
     if (eq <= 0) continue;
     const key = trimmed.slice(0, eq).trim();
+    if (
+      ![
+        "PLANE_URL",
+        "PLANE_BASE_URL",
+        "PLANE_API_KEY",
+        "PLANE_WORKSPACE",
+        "PLANE_WORKSPACE_SLUG",
+      ].includes(key)
+    )
+      continue;
     let value = trimmed.slice(eq + 1).trim();
     // Values may be quoted; the convention does not require it, but tolerate it.
     if (
@@ -165,40 +175,3 @@ export const resolveConfig = (input: ConfigInput, allowMissingToken = false): Co
 /** Never print a token; show enough to tell two apart. */
 export const maskToken = (token: string): string =>
   token.length <= 10 ? "***" : `${token.slice(0, 6)}…${token.slice(-4)}`;
-
-export interface SessionSettings {
-  readonly login?: Resolved;
-  readonly password?: Resolved;
-  readonly cacheDirectory: string;
-}
-export interface SessionConfig extends Config {
-  readonly login: Resolved;
-  readonly password: Resolved;
-  readonly cacheDirectory: string;
-}
-
-export const sessionSettings = (input: ConfigInput, cacheDirectory?: string): SessionSettings => {
-  const configPath = input.configPath ?? process.env.PLANE_CONFIG ?? DEFAULT_CONFIG_PATH;
-  const file = readCredentials(configPath);
-  return {
-    login: pick(undefined, ["PLANE_LOGIN"], ["PLANE_LOGIN"], file),
-    password: pick(undefined, ["PLANE_PASSWORD"], ["PLANE_PASSWORD"], file),
-    cacheDirectory:
-      cacheDirectory ??
-      process.env.PLANE_SESSION_CACHE ??
-      join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "i-plane", "sessions"),
-  };
-};
-
-export const resolveSessionConfig = (
-  input: ConfigInput,
-  cacheDirectory?: string,
-): SessionConfig => {
-  const settings = sessionSettings(input, cacheDirectory);
-  const config = resolveConfig(input, true);
-  if (!settings.login || !settings.password)
-    throw new UsageError(
-      `Pages need PLANE_LOGIN and PLANE_PASSWORD in the environment or ${config.configPath}. An API key is not required.`,
-    );
-  return { ...config, ...settings, login: settings.login, password: settings.password };
-};

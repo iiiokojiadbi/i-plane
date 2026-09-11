@@ -8,6 +8,7 @@
 
 import type { Config } from "./config.ts";
 import { connectionRoute, type FetchLike, isConnectionDenied, proxyFetch } from "./http.ts";
+import { guardSecret, scrub } from "./output.ts";
 
 /*
  * Anything on its way to a human or a log passes through here first. Node puts
@@ -17,7 +18,7 @@ import { connectionRoute, type FetchLike, isConnectionDenied, proxyFetch } from 
  */
 const redact = (text: string, secret: string): string => {
   if (secret === "") return text;
-  let safe = text.split(secret).join("[token]");
+  let safe = scrub(text).split(secret).join("[token]");
   // A token carrying a newline reaches Node's header validator in pieces.
   for (const piece of secret.split(/\s+/)) {
     if (piece.length >= 12) safe = safe.split(piece).join("[token]");
@@ -53,13 +54,14 @@ export interface RequestOptions {
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 export class PlaneClient {
-  private readonly config: Config;
+  readonly config: Config;
   /** Resolved once per process: the choice cannot change between requests. */
   private transport: FetchLike | undefined;
   private transportReady = false;
 
   constructor(config: Config) {
     this.config = config;
+    guardSecret(config.token.value);
   }
 
   private async fetcher(target: string): Promise<FetchLike> {
@@ -107,6 +109,7 @@ export class PlaneClient {
         },
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
         signal: controller.signal,
+        redirect: "error",
       });
     } catch (cause) {
       if (cause instanceof Error && cause.name === "AbortError") {

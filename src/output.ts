@@ -28,7 +28,7 @@ export const printColumns = (rows: ReadonlyArray<Column>, indent = "  "): Readon
  */
 const secrets = new Set<string>();
 
-/** Register credentials before use; retain old values after session refresh. */
+/** Register credentials before use; keep them guarded for the process lifetime. */
 export const guardSecret = (value: string): void => {
   if (value === "") {
     secrets.clear();

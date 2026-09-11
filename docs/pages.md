@@ -1,27 +1,30 @@
 # Project pages
 
 Read project knowledge as Markdown, then change a section without rewriting the
-rest of the document. Pages use Plane's internal session API and live editor;
-they are available on instances exposing project pages and the live service.
+rest of the document. Page metadata uses the API-key pages endpoint; content
+changes use the collaborative live editor.
 
 ## Connect
 
-Add these to your private credentials file alongside `PLANE_URL` and
-`PLANE_WORKSPACE`:
+Page commands require a Plane deployment with the for-plane API-key pages
+extension enabled. Stock Plane does not expose this access path. Configure the
+same three settings used for work items:
 
 ```ini
-PLANE_LOGIN=you@example.com
-PLANE_PASSWORD=your-password
+PLANE_URL=https://plane.example.com
+PLANE_WORKSPACE=workspace
+PLANE_API_KEY=your-api-key
 ```
 
-An API token is optional for page commands and still required for work items.
-`i-plane config` reports whether credentials are configured and where they came
-from, without printing the login password or cookies. Sessions persist under
-`$XDG_CACHE_HOME/i-plane/sessions` or `~/.cache/i-plane/sessions`; the directory
-has mode 700 and files have mode 600. A restricted environment can select a
-private writable directory with `PLANE_SESSION_CACHE` or `--session-cache`.
-An expired session receives one refresh. HTTP and WebSocket connections honor
-`HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
+`i-plane config` reports each setting's source and masks the key. HTTP and live
+connections use that key; the server derives the user and checks current page
+permissions. Read commands request read-only live access. HTTP and WebSocket
+connections honor `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
+
+Version 2 removes password sign-in, cookie caching and automatic reauthentication.
+Legacy login, password and cache settings are ignored. Old cache files are never
+opened or migrated. There is no fallback on installations without the extension.
+A rejected or uncertain write is never replayed automatically.
 
 ## Read, inspect, edit
 
@@ -74,7 +77,8 @@ clears a whole page, but empty block replacement or insertion is refused. Use
 `page rm --block` for a block deletion. Page deletion always requires `--yes`. Plane requires archiving first; the CLI
 archives and then deletes the page. If deletion fails, the error reports the
 archived page UUID so you can inspect and recover it.
-Nested pages and `--parent` are unsupported by the project-page API.
+Nested pages can be read and edited by UUID. Listing returns root pages; name
+resolution uses that list. The CLI does not expose a `--parent` option.
 
 ## Delivery and formatting
 

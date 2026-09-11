@@ -3,11 +3,11 @@ import MarkdownIt from "markdown-it";
 import taskLists from "markdown-it-task-lists";
 import * as Y from "yjs";
 import { UsageError } from "./args.ts";
+import type { PlaneClient } from "./client.ts";
 import { PlaneError } from "./client.ts";
 import { scrubHtml } from "./html-secrets.ts";
 import { scrub } from "./output.ts";
 import { htmlToMarkdown } from "./richtext.ts";
-import type { SessionClient } from "./session.ts";
 
 interface TextPart {
   insert: unknown;
@@ -305,7 +305,7 @@ export interface PreparedDocument {
   losses: string[];
 }
 export const prepareMarkdown = async (
-  client: SessionClient,
+  client: PlaneClient,
   markdown: string,
 ): Promise<PreparedDocument> => {
   const html = parser
@@ -327,16 +327,12 @@ export const prepareMarkdown = async (
       (_match, paragraph: string | undefined, attributes: string) =>
         `<li data-type="taskItem" data-checked="${/\bchecked=/.test(attributes)}">${paragraph ?? ""}`,
     );
-  const reply = await client.raw("/live/convert-document", {
+  const data = await client.request<{ description_binary?: unknown }>("/live/convert-document", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ description_html: convertedHtml, variant: "rich" }),
+    body: { description_html: convertedHtml, variant: "rich" },
   });
-  if (reply.status !== 200)
-    throw new PlaneError(`Document converter answered ${reply.status}.`, reply.status);
   const doc = new Y.Doc();
   try {
-    const data = JSON.parse(reply.text);
     if (typeof data.description_binary !== "string" || !data.description_binary)
       throw new Error("Missing document binary");
     Y.applyUpdate(doc, Buffer.from(data.description_binary, "base64"));

@@ -52,7 +52,7 @@ try {
           "test",
           "tests/page-document.test.ts",
           "tests/page-commands.test.ts",
-          "tests/session.test.ts",
+          "tests/page-api-key.test.ts",
         ],
         {
           cwd: directory,

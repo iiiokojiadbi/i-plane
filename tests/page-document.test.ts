@@ -12,7 +12,7 @@ import {
   stamp,
 } from "../src/page-document.ts";
 import { editDocument } from "../src/page-edit.ts";
-import type { SessionClient } from "../src/session.ts";
+import type { PlaneClient } from "../src/client.ts";
 import heading from "./fixtures/pages/heading.json";
 import code from "./fixtures/pages/code.json";
 import table from "./fixtures/pages/table.json";
@@ -125,7 +125,7 @@ test("complex table cells report structural loss and refuse silent replacement",
   }
 });
 const converter = (response: unknown) =>
-  ({ raw: async () => ({ status: 200, text: JSON.stringify(response) }) }) as SessionClient;
+  ({ request: async () => response }) as PlaneClient;
 
 for (const [name, fixture] of Object.entries({
   heading,
@@ -220,10 +220,10 @@ test("empty full replacement needs no converter and clears a document", async ()
   const target = document();
   const prepared = await prepareMarkdown(
     {
-      raw: () => {
+      request: () => {
         throw new Error("must not call converter");
       },
-    } as unknown as SessionClient,
+    } as unknown as PlaneClient,
     "",
   );
   target.doc.transact(() => editDocument(target.fragment, { kind: "set" }, prepared));

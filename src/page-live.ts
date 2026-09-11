@@ -2,16 +2,14 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from "@hocuspocus/pro
 import { HttpsProxyAgent } from "https-proxy-agent";
 import WebSocket from "ws";
 import * as Y from "yjs";
-import { PlaneError } from "./client.ts";
+import { type PlaneClient, PlaneError } from "./client.ts";
 import { websocketProxy } from "./http.ts";
 import { guardSecret, scrub } from "./output.ts";
-import { cookieHeader, type SessionClient } from "./session.ts";
 
 export interface Delivery {
   delivery: "acknowledged" | "unchanged";
   persistence: "asynchronous";
 }
-class AuthenticationError extends PlaneError {}
 interface Pending {
   resolve: () => void;
   reject: (error: Error) => void;
@@ -66,8 +64,7 @@ export class LiveDocument {
       onClose: () => this.fail(new PlaneError("Live document connection closed.")),
       onSynced: () => this.progress(),
       onUnsyncedChanges: () => this.progress(),
-      onAuthenticationFailed: () =>
-        this.fail(new AuthenticationError("Live authentication was refused.")),
+      onAuthenticationFailed: () => this.fail(new PlaneError("Live authentication was refused.")),
     });
     this.provider.attach();
   }
@@ -126,7 +123,7 @@ export class LiveDocument {
     if (this.failure) throw this.failure;
     if (!this.provider.isSynced) throw new PlaneError("Live document is not synchronized.");
     if (this.provider.authorizedScope !== "read-write")
-      throw new PlaneError("The live session does not allow writing this page.");
+      throw new PlaneError("The API key does not allow writing this page.");
     let changed = false;
     const onUpdate = (_update: Uint8Array, origin: unknown) => {
       if (origin === this) changed = true;
@@ -154,30 +151,37 @@ export class LiveDocument {
 }
 
 export const openLive = async (
-  client: SessionClient,
+  client: PlaneClient,
   projectId: string,
   pageId: string,
+  options: { writable?: boolean } = {},
 ): Promise<LiveDocument> => {
+  guardSecret(client.config.token.value);
+  const configuration = await client
+    .request<{ release?: unknown }>("/api/extensions/configuration/")
+    .catch((error: unknown) => {
+      if (error instanceof PlaneError && error.status === 404)
+        throw new PlaneError("Page commands require the for-plane API-key pages extension.", 404);
+      throw error;
+    });
+  if (typeof configuration.release !== "string" || !configuration.release)
+    throw new PlaneError("The for-plane runtime has no active extension release.");
   const url = new URL(`${client.config.url.value}/live/collaboration`);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.searchParams.set("documentType", "project_page");
   url.searchParams.set("projectId", projectId);
   url.searchParams.set("workspaceSlug", client.config.workspace.value);
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const session = await client.session(attempt === 1);
-    const live = new LiveDocument(
-      url.href,
-      pageId,
-      JSON.stringify({ id: session.userId, cookie: cookieHeader(session) }),
-    );
-    try {
-      await live.ready();
-      return live;
-    } catch (error) {
-      live.destroy();
-      if (attempt === 0 && error instanceof AuthenticationError) continue;
-      throw new PlaneError(scrub(error instanceof Error ? error.message : String(error)));
-    }
+  url.searchParams.set("forPlaneRelease", configuration.release);
+  const live = new LiveDocument(
+    url.href,
+    pageId,
+    JSON.stringify({ apiKey: client.config.token.value, readOnly: !options.writable }),
+  );
+  try {
+    await live.ready();
+    return live;
+  } catch (error) {
+    live.destroy();
+    throw new PlaneError(scrub(error instanceof Error ? error.message : String(error)));
   }
-  throw new PlaneError("Live authentication failed.");
 };

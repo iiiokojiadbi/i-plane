@@ -7,7 +7,7 @@ import { parseCommandArgs } from "../src/args.ts";
 import { dispatchPageCommand } from "../src/page-dispatch.ts";
 import { runPageContent } from "../src/commands/page-content.ts";
 import { outline, readFragment } from "../src/page-document.ts";
-import type { SessionClient } from "../src/session.ts";
+import type { PlaneClient } from "../src/client.ts";
 import { ALL_COMMANDS } from "../src/registry.ts";
 import heading from "./fixtures/pages/heading.json";
 import replacement from "./fixtures/pages/replacement.json";
@@ -44,7 +44,7 @@ test("invalid page writes fail before any request, including empty block and fal
       requests++;
       throw new Error("unexpected request");
     },
-  } as unknown as SessionClient;
+  } as unknown as PlaneClient;
   for (const words of [
     ["page", "rm", "APP", "Page", "--yes=false"],
     ["page", "rm", "APP", "Page", "--yes", "--block="],
@@ -69,15 +69,15 @@ test("failed content creation reports the created UUID without repeating POST", 
   const stub = await server("before");
   let posts = 0;
   const client = {
-    config: { url: { value: stub.url }, workspace: { value: "workspace" } },
-    session: async () => ({ userId: "user", sessionId: "cookie", csrf: "csrf" }),
+    config: { url: { value: stub.url }, workspace: { value: "workspace" }, token: { value: "page-api-secret" } },
     listAll: async () => [{ id: "project", identifier: "APP", name: "Project" }],
-    raw: async () => ({ status: 200, text: JSON.stringify(heading.response) }),
-    request: async () => {
+    request: async (path: string) => {
+      if (path === "/live/convert-document") return heading.response;
+      if (path === "/api/extensions/configuration/") return { release: "test-release" };
       posts++;
       return { id: "created-page-id", name: "Page" };
     },
-  } as unknown as SessionClient;
+  } as unknown as PlaneClient;
   await expect(
     runPageContent(
       "page create",
@@ -107,7 +107,7 @@ test("failed deletion reports the archived page, and an already archived page is
       if (method === "DELETE") throw new Error("Connection lost");
       return { id: "page-id", name: "Page", archived_at: archived };
     },
-  } as unknown as SessionClient;
+  } as unknown as PlaneClient;
   const invoke = () =>
     runPageContent("page rm", client, args(["page", "rm", "APP", "Page", "--yes"]), true);
   await expect(invoke()).rejects.toThrow(
@@ -135,7 +135,7 @@ test("unconfirmed archive reports UUID and does not attempt deletion", async () 
       }
       return { id: "page-id", name: "Page" };
     },
-  } as unknown as SessionClient;
+  } as unknown as PlaneClient;
   await expect(
     runPageContent("page rm", client, args(["page", "rm", "APP", "Page", "--yes"]), true),
   ).rejects.toThrow("Archiving page page-id was not confirmed");
@@ -159,21 +159,18 @@ test("every page handler executes: JSON, file input, anchor edits, metadata CRUD
   };
   const calls: Array<{ path: string; method: string; body?: unknown }> = [];
   const client = {
-    config: { url: { value: stub.url }, workspace: { value: "workspace" } },
-    session: async () => ({ userId: "user", sessionId: "cookie", csrf: "csrf" }),
+    config: { url: { value: stub.url }, workspace: { value: "workspace" }, token: { value: "page-api-secret" } },
     listAll: async (path: string) => (path === "projects/" ? [project] : [page]),
     request: async (path: string, options: { method?: string; body?: unknown } = {}) => {
+      if (path === "/api/extensions/configuration/") return { release: "test-release" };
+      if (path === "/live/convert-document") {
+        const html = (options.body as { description_html: string }).description_html;
+        return html === heading.html ? heading.response : replacement.response;
+      }
       calls.push({ path, method: options.method ?? "GET", body: options.body });
       return page;
     },
-    raw: async (_path: string, options: RequestInit) => {
-      const html = JSON.parse(String(options.body)).description_html;
-      return {
-        status: 200,
-        text: JSON.stringify(html === heading.html ? heading.response : replacement.response),
-      };
-    },
-  } as unknown as SessionClient;
+  } as unknown as PlaneClient;
   const executed = new Set<string>();
   const run = async (words: string[]) => {
     const parsed = args(words);
