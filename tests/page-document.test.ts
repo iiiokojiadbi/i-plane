@@ -216,6 +216,74 @@ test("nested structural anchors do not create a false content conflict", () => {
   expect(fingerprint(list)).toBe(before);
   doc.destroy();
 });
+test("nested review fingerprints ignore structural anchors but retain date, source and unknown semantic ids", () => {
+  const doc = new Y.Doc(),
+    fragment = doc.getXmlFragment("default"),
+    quote = new Y.XmlElement("blockquote"),
+    review = new Y.XmlElement("knowledgeReview");
+  quote.setAttribute("id", "quote-anchor");
+  review.setAttribute("reviewedAt", "2026-09-12");
+  review.setAttribute("source", "Maintenance notes");
+  quote.insert(0, [review]);
+  fragment.insert(0, [quote]);
+  try {
+    const before = readBlock(fragment, "quote-anchor");
+    for (const anchor of ["assigned-review-anchor", "reassigned-review-anchor"]) {
+      review.setAttribute("id", anchor);
+      const after = readBlock(fragment, "quote-anchor");
+      expect(after.fingerprint).toBe(before.fingerprint);
+      expect(after.markdown).toBe(before.markdown);
+      expect(after.losses).toEqual([]);
+    }
+    review.removeAttribute("id");
+    expect(fingerprint(quote)).toBe(before.fingerprint);
+    review.setAttribute("reviewedAt", "2026-09-13");
+    expect(fingerprint(quote)).not.toBe(before.fingerprint);
+    review.setAttribute("reviewedAt", "2026-09-12");
+    review.setAttribute("source", "Updated maintenance notes");
+    expect(fingerprint(quote)).not.toBe(before.fingerprint);
+    review.setAttribute("source", "Maintenance notes");
+    expect(fingerprint(quote)).toBe(before.fingerprint);
+
+    const mention = new Y.XmlElement("mention");
+    mention.setAttribute("id", "person-one");
+    quote.insert(1, [mention]);
+    const withMention = fingerprint(quote);
+    mention.setAttribute("id", "person-two");
+    expect(fingerprint(quote)).not.toBe(withMention);
+  } finally {
+    doc.destroy();
+  }
+});
+
+test("assigning a nested review anchor does not reject a fingerprint-protected parent replacement", () => {
+  const doc = new Y.Doc(),
+    fragment = doc.getXmlFragment("default"),
+    quote = new Y.XmlElement("blockquote"),
+    review = new Y.XmlElement("knowledgeReview"),
+    preparedDoc = new Y.Doc(),
+    prepared = { doc: preparedDoc, fragment: preparedDoc.getXmlFragment("default"), losses: [] };
+  quote.setAttribute("id", "quote-anchor");
+  review.setAttribute("reviewedAt", "2026-09-12");
+  review.setAttribute("source", "Maintenance notes");
+  quote.insert(0, [review]);
+  fragment.insert(0, [quote]);
+  prepared.fragment.insert(0, [new Y.XmlElement("paragraph")]);
+  try {
+    const before = readBlock(fragment, "quote-anchor");
+    review.setAttribute("id", "assigned-review-anchor");
+    doc.transact(() => editDocument(fragment, {
+      kind: "set", block: "quote-anchor", ifMatch: before.fingerprint,
+    }, prepared));
+    const replaced = findBlock(fragment, "quote-anchor").node;
+    expect(replaced.nodeName).toBe("paragraph");
+    expect(fragment.length).toBe(1);
+  } finally {
+    preparedDoc.destroy();
+    doc.destroy();
+  }
+});
+
 test("empty full replacement needs no converter and clears a document", async () => {
   const target = document();
   const prepared = await prepareMarkdown(

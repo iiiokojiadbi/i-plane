@@ -67,6 +67,7 @@ const anchoredKinds = new Set([
   "tablecell",
   "imagecomponent",
   "image",
+  "knowledgereview",
 ]);
 const content = (node: Block, topLevel = true): unknown =>
   node instanceof Y.XmlText
