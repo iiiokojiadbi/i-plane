@@ -116,3 +116,14 @@ export const parseCommandArgs = (argv: ReadonlyArray<string>): ParsedArgs => {
   }
   return { ...args, path: [findCommand(root)?.name ?? root] };
 };
+
+/** Reject surplus arguments before configuration or requests; text commands opt into variadic input. */
+export const validatePositionals = (command: string | undefined, args: ParsedArgs): void => {
+  const entry = findCommand(command ?? "");
+  if (!entry && command && command !== "help" && command !== "version") return;
+  const limit = entry?.maxPositionals;
+  if (limit !== null && args.positionals.length > (limit ?? 0))
+    throw new UsageError(
+      `${command ?? "i-plane"} accepts at most ${limit ?? 0} positional arguments. Quote multiword names as one argument.`,
+    );
+};

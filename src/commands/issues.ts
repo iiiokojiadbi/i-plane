@@ -6,14 +6,14 @@
  * three items. What the formatter then prints is a line each.
  */
 
-import { flagBool, flagNumber, flagValue, type ParsedArgs, UsageError } from "../args.ts";
-import type { PlaneClient } from "../client.ts";
+import { flagBool, flagValue, type ParsedArgs, UsageError } from "../args.ts";
+import { type PlaneClient, PlaneError } from "../client.ts";
 import { oneLine, printColumns, truncate, warn } from "../output.ts";
 import { listStates, resolveIssue, resolveProject } from "../resolve.ts";
 import { htmlToMarkdown, markdownToHtml } from "../richtext.ts";
 import type { Issue, State } from "../types.ts";
 import { priorityRank, stateGroupRank } from "../types.ts";
-import { requireChanges } from "../validation.ts";
+import { integerLimit, requireChanges } from "../validation.ts";
 import { type CommentRow, commentsOf, formatComments } from "./comments.ts";
 import { issueFields } from "./issue-fields.ts";
 
@@ -84,6 +84,7 @@ export interface Listing {
 }
 
 export const listIssues = async (client: PlaneClient, args: ParsedArgs): Promise<Listing> => {
+  const limit = integerLimit(args);
   const projectRef = args.positionals[0] ?? flagValue(args, "project");
   if (projectRef === undefined) {
     throw new UsageError("Which project?");
@@ -93,7 +94,6 @@ export const listIssues = async (client: PlaneClient, args: ParsedArgs): Promise
   // Only fields and expand are honoured by this endpoint. state_group, priority
   // and order_by are accepted with 200 and then ignored — the answer comes back
   // whole either way. So narrowing happens here, on rows already made small.
-  const limit = flagNumber(args, "limit");
   const issues = await client.listAll<ExpandedIssue>(`projects/${project.id}/issues/`, {
     query: { fields: LIST_FIELDS, expand: "state", per_page: 100 },
   });
@@ -282,7 +282,7 @@ export const completeIssue = async (client: PlaneClient, args: ParsedArgs): Prom
     throw new UsageError("This project has no state in the completed group.");
   }
   const next = new Map(args.flags);
-  next.set("state", completed.name);
+  next.set("state", completed.id);
   return updateIssue(client, { ...args, flags: next });
 };
 
@@ -323,10 +323,14 @@ export interface Found {
  * Workspace-wide search. Plane's own MCP server has no equivalent — it can only
  * list one project at a time.
  */
-export const findIssues = async (
-  client: PlaneClient,
-  args: ParsedArgs,
-): Promise<ReadonlyArray<Found>> => {
+export interface SearchResult {
+  readonly rows: ReadonlyArray<Found>;
+  readonly limit: number;
+  readonly hasMore: boolean;
+}
+
+export const findIssues = async (client: PlaneClient, args: ParsedArgs): Promise<SearchResult> => {
+  const limit = integerLimit(args, 1, 1000) ?? 10;
   const text = args.positionals.join(" ").trim();
   if (text === "") throw new UsageError("What to search for?");
   const answer = await client.request<{
@@ -336,18 +340,26 @@ export const findIssues = async (
       sequence_id: number;
       project__identifier: string;
     }>;
-  }>("issues/search/", { query: { search: text } });
-  return (answer.issues ?? []).map((hit) => ({
+  }>("issues/search/", { query: { search: text, limit: limit + 1 } });
+  if (!answer || !Array.isArray(answer.issues))
+    throw new PlaneError("Unexpected search response: expected an issues array.");
+  const rows = answer.issues.slice(0, limit).map((hit) => ({
     ref: `${hit.project__identifier}-${hit.sequence_id}`,
     name: oneLine(hit.name),
     id: hit.id,
   }));
+  return { rows, limit, hasMore: answer.issues.length > limit };
 };
 
-export const formatFound = (hits: ReadonlyArray<Found>): string =>
-  hits.length === 0
-    ? "nothing found"
-    : printColumns(
-        hits.map((hit) => ({ name: hit.ref, text: truncate(hit.name, 80) })),
-        "",
-      ).join("\n");
+export const formatFound = ({ rows, limit, hasMore }: SearchResult): string => {
+  const listing =
+    rows.length === 0
+      ? "nothing found"
+      : printColumns(
+          rows.map((hit) => ({ name: hit.ref, text: truncate(hit.name, 80) })),
+          "",
+        ).join("\n");
+  return hasMore
+    ? `${listing}\n\nshowing the first ${limit} matches; more exist — raise --limit (up to 1000) or narrow the query`
+    : listing;
+};

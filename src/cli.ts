@@ -8,7 +8,14 @@
  * because those are the things that cost a wrong call to discover.
  */
 
-import { flagBool, flagValue, type ParsedArgs, parseCommandArgs, UsageError } from "./args.ts";
+import {
+  flagBool,
+  flagValue,
+  type ParsedArgs,
+  parseCommandArgs,
+  UsageError,
+  validatePositionals,
+} from "./args.ts";
 import { PlaneClient, PlaneError } from "./client.ts";
 import {
   formatCommandHelp,
@@ -156,9 +163,10 @@ const main = async (): Promise<void> => {
     configPath: flagValue(args, "config"),
   });
   if (early !== undefined) guardSecret(early);
-  if (runOffline(args, json)) return;
-
   const commandName = args.path.join(" ");
+  current = findCommand(commandName)?.name;
+  validatePositionals(commandName, args);
+  if (runOffline(args, json)) return;
   const config = resolveConfig(
     {
       url: flagValue(args, "url"),

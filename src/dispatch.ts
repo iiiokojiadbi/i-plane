@@ -1,4 +1,4 @@
-import { type ParsedArgs, UsageError } from "./args.ts";
+import { type ParsedArgs, UsageError, validatePositionals } from "./args.ts";
 import type { PlaneClient } from "./client.ts";
 import { formatComments, listComments } from "./commands/comments.ts";
 import {
@@ -188,5 +188,6 @@ export const dispatchCommand = async (
 ): Promise<void> => {
   const run = command === undefined ? undefined : HANDLERS[command];
   if (run === undefined) throw new UsageError(`No command "${command}". Run i-plane for the map.`);
+  validatePositionals(command, args);
   await run({ client, args, config }, json);
 };

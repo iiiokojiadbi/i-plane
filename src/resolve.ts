@@ -112,9 +112,13 @@ export const stateIndex = async (
 
 /** Finds a state by name, then by group, so `--state done` works either way. */
 export const findState = (states: ReadonlyArray<State>, ref: string): State => {
+  if (!ref.trim()) throw new UsageError("Expected a state UUID, name or group.");
   const needle = ref.toLowerCase();
-  const byName = states.find((s) => s.name.toLowerCase() === needle);
-  if (byName !== undefined) return byName;
+  const byId = states.find((state) => state.id.toLowerCase() === needle);
+  if (byId !== undefined) return byId;
+  const byName = states.filter((state) => state.name.toLowerCase() === needle);
+  if (byName.length > 1) throw new UsageError(`Ambiguous state "${ref}". Use a state UUID.`);
+  if (byName[0] !== undefined) return byName[0];
   const byPrefix = states.filter((s) => s.name.toLowerCase().startsWith(needle));
   if (byPrefix.length === 1 && byPrefix[0] !== undefined) return byPrefix[0];
   const byGroup = states.filter((s) => s.group.toLowerCase() === needle);

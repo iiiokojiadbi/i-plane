@@ -20,6 +20,7 @@ export const dateValue = (value: string, name: string): string | null => {
   const parsed = new Date(`${value}T00:00:00Z`);
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    value.startsWith("0000") ||
     Number.isNaN(parsed.getTime()) ||
     parsed.toISOString().slice(0, 10) !== value
   ) {
@@ -45,4 +46,17 @@ export const references = (value: string): string[] => {
 export const requireChanges = (body: Record<string, unknown>): void => {
   if (Object.keys(body).length === 0)
     throw new UsageError("Nothing to change. Pass at least one field flag.");
+};
+
+export const integerLimit = (
+  args: ParsedArgs,
+  minimum = 0,
+  maximum = Number.MAX_SAFE_INTEGER,
+): number | undefined => {
+  const raw = flagValue(args, "limit");
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(value) || value < minimum || value > maximum)
+    throw new UsageError(`--limit expects an integer from ${minimum} to ${maximum}.`);
+  return value;
 };

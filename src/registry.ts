@@ -19,6 +19,8 @@ export interface Command {
   readonly name: string;
   readonly alias?: string;
   readonly args?: string;
+  /** Maximum positional tokens; null explicitly permits variadic text or references. */
+  readonly maxPositionals: number | null;
   readonly summary: string;
   readonly options?: ReadonlyArray<Option>;
   /** Real invocations, not shapes: an agent copies these. */
@@ -150,6 +152,7 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "summary",
+        maxPositionals: 0,
         summary: "Projects in the workspace and how much is in each.",
         options: [JSON_OPTION],
         examples: ["i-plane summary"],
@@ -157,6 +160,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "projects",
+        maxPositionals: 0,
         alias: "ps",
         summary: "Projects with their identifiers.",
         options: [JSON_OPTION],
@@ -164,6 +168,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "list",
+        maxPositionals: 1,
         alias: "ls",
         args: "[project]",
         summary: "Work items of one project, one line each.",
@@ -181,7 +186,8 @@ export const GROUPS: ReadonlyArray<Group> = [
           {
             flag: "--limit",
             value: "<n>",
-            summary: "Show only the first n rows. The output says how many were hidden.",
+            summary:
+              "Show the first n rows; n is a nonnegative integer. The output reports hidden rows.",
           },
           PROJECT_OPTION,
           JSON_OPTION,
@@ -195,6 +201,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "show",
+        maxPositionals: 1,
         args: "<ID>",
         summary: "One work item with its description as Markdown.",
         options: [
@@ -207,10 +214,21 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "search",
+        maxPositionals: null,
         alias: "find",
         args: "<text>",
-        summary: "Search work items across the whole workspace, not one project.",
-        options: [JSON_OPTION],
+        summary: "Search work items across the workspace; report whether more matches exist.",
+        options: [
+          {
+            flag: "--limit",
+            value: "<n>",
+            summary: "Show up to n matches (1–1000, default 10); request one extra to detect more.",
+          },
+          JSON_OPTION,
+        ],
+        notes: [
+          "JSON returns rows, limit and hasMore. Text warns when more matches exist; raise --limit or narrow the query. No total count is inferred.",
+        ],
         examples: ['i-plane search "resolver"'],
         next: ["i-plane show <ID>"],
       },
@@ -221,6 +239,7 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "create",
+        maxPositionals: null,
         alias: "new",
         args: "<title>",
         summary: "Create a work item.",
@@ -249,12 +268,17 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "update",
+        maxPositionals: 1,
         alias: "set",
         args: "<ID>",
         summary: "Change fields of a work item. Pass at least one flag.",
         options: [
           ...ISSUE_FIELDS,
-          { flag: "--state", value: "<name>", summary: "State by name or by group." },
+          {
+            flag: "--state",
+            value: "<name>",
+            summary: "State by UUID, unique name or group; ambiguous names are rejected.",
+          },
           { flag: "--priority", value: "<level>", summary: "urgent, high, medium, low, none." },
           { flag: "--name", value: "<title>", summary: "New title." },
           { flag: "--description", value: "<markdown>", summary: "Replaces the description." },
@@ -274,6 +298,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "done",
+        maxPositionals: 1,
         args: "<ID>",
         summary: "Move to the first completed state. Shorthand for update --state.",
         // done delegates to update, so it accepts what update accepts. Listing
@@ -294,6 +319,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "comment",
+        maxPositionals: null,
         args: "<ID> <text>",
         summary: "Add a comment. Text is Markdown.",
         options: [PROJECT_OPTION, JSON_OPTION],
@@ -301,6 +327,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "comments",
+        maxPositionals: 1,
         args: "<ID>",
         summary: "Read all comments as Markdown, oldest first.",
         options: [PROJECT_OPTION, JSON_OPTION],
@@ -313,6 +340,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "delete",
+        maxPositionals: 1,
         alias: "rm",
         args: "<ID>",
         summary: "Delete a work item. Refuses without --yes.",
@@ -330,6 +358,7 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "project create",
+        maxPositionals: null,
         args: "<name>",
         summary: "Create a project. Names cannot contain special characters, including hyphens.",
         options: [
@@ -354,6 +383,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "project update",
+        maxPositionals: 1,
         args: "<project>",
         summary: "Change project details or enable cycles, modules and intake.",
         options: [
@@ -374,6 +404,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "project archive",
+        maxPositionals: 1,
         args: "<project>",
         summary: "Archive a project and hide it from active lists.",
         options: [JSON_OPTION],
@@ -385,6 +416,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "project rm",
+        maxPositionals: 1,
         args: "<project>",
         summary: "Permanently delete a project and its contents. Requires --yes.",
         options: [YES_OPTION, JSON_OPTION],
@@ -396,6 +428,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "label create",
+        maxPositionals: null,
         args: "<name>",
         summary: "Create a work item label in a project. Default color: #808080.",
         options: [REQUIRED_PROJECT_OPTION, COLOR_OPTION, DESCRIPTION_OPTION, JSON_OPTION],
@@ -408,6 +441,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "label rm",
+        maxPositionals: 1,
         args: "<label>",
         summary: "Delete a label by name or UUID. Requires --yes.",
         options: [REQUIRED_PROJECT_OPTION, YES_OPTION, JSON_OPTION],
@@ -419,6 +453,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "state create",
+        maxPositionals: null,
         args: "<name>",
         summary: "Create a state. Requires --project, --color and --group.",
         options: [
@@ -437,6 +472,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "state update",
+        maxPositionals: 1,
         args: "<state>",
         summary: "Change a state by name or UUID. An ambiguous name is an error.",
         options: [
@@ -455,6 +491,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "state rm",
+        maxPositionals: 1,
         args: "<state>",
         summary: "Delete a state by name or UUID. Requires --yes; Plane may refuse states in use.",
         options: [REQUIRED_PROJECT_OPTION, YES_OPTION, JSON_OPTION],
@@ -467,6 +504,7 @@ export const GROUPS: ReadonlyArray<Group> = [
 
       {
         name: "states",
+        maxPositionals: 1,
         args: "[project]",
         summary: "States and their groups — the names --state accepts.",
         options: [PROJECT_OPTION, JSON_OPTION],
@@ -474,6 +512,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "labels",
+        maxPositionals: 1,
         args: "[project]",
         summary: "Labels of a project.",
         options: [PROJECT_OPTION, JSON_OPTION],
@@ -481,6 +520,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "members",
+        maxPositionals: 0,
         summary: "Who is in the workspace.",
         options: [JSON_OPTION],
         examples: ["i-plane members"],
@@ -494,6 +534,7 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "cycles",
+        maxPositionals: 1,
         args: "[project]",
         summary: "All cycles and their dates. A cycle groups work by time.",
         options: [PROJECT_OPTION, JSON_OPTION],
@@ -506,6 +547,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "cycle create",
+        maxPositionals: null,
         args: "<name>",
         summary: "Create a cycle. Supply --start and --end together; omit both for a draft.",
         options: [
@@ -535,6 +577,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "cycle update",
+        maxPositionals: 1,
         args: "<cycle>",
         summary:
           "Change a cycle name, description, owner or dates. Change --start and --end together; none clears both dates.",
@@ -559,6 +602,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "cycle add",
+        maxPositionals: null,
         args: "<ID...>",
         summary:
           "Add work items to a cycle. All must belong to the selected project; this can move them from another cycle.",
@@ -581,6 +625,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "cycle issues",
+        maxPositionals: 1,
         args: "<cycle>",
         summary: "All work items in a cycle, one line each.",
         options: [REQUIRED_PROJECT_OPTION, JSON_OPTION],
@@ -592,6 +637,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "cycle transfer",
+        maxPositionals: 2,
         args: "<from> <to>",
         summary:
           "Move unfinished work to another cycle. The source cycle must have ended; completed and cancelled work stays behind.",
@@ -605,6 +651,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "modules",
+        maxPositionals: 1,
         args: "[project]",
         summary: "List feature, milestone or workstream modules and their overall status.",
         options: [PROJECT_OPTION, JSON_OPTION],
@@ -620,6 +667,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "module create",
+        maxPositionals: null,
         args: "<name>",
         summary: "Create a module for a feature, milestone or related workstream.",
         options: [
@@ -651,6 +699,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "module add",
+        maxPositionals: null,
         args: "<ID...>",
         summary: "Add related work items to a module; they may belong to other modules too.",
         options: [
@@ -672,6 +721,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "module issues",
+        maxPositionals: 1,
         args: "<module>",
         summary: "All work items in a module, one line each.",
         options: [REQUIRED_PROJECT_OPTION, JSON_OPTION],
@@ -690,6 +740,7 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "intake list",
+        maxPositionals: 1,
         args: "[project]",
         summary: "Review incoming reports and requests before committing them to project work.",
         options: [PROJECT_OPTION, INTAKE_STATUS_OPTION, JSON_OPTION],
@@ -709,6 +760,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "intake create",
+        maxPositionals: null,
         args: "<title>",
         summary: "Submit a report or idea to triage without adding committed work to the board.",
         options: [REQUIRED_PROJECT_OPTION, ...INTAKE_FIELDS, JSON_OPTION],
@@ -728,6 +780,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "intake show",
+        maxPositionals: 1,
         args: "<ID>",
         summary:
           "Read an intake work item by readable reference or underlying work item UUID (issueId in JSON).",
@@ -744,6 +797,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "intake update",
+        maxPositionals: 1,
         args: "<ID>",
         summary: "Clarify a request or decide to accept, reject, snooze or mark it duplicate.",
         options: [
@@ -785,6 +839,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "intake rm",
+        maxPositionals: 1,
         args: "<ID>",
         summary:
           "Delete an intake entry. Unaccepted work items are deleted too; accepted work items stay on the board. Requires --yes.",
@@ -809,6 +864,7 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "pages",
+        maxPositionals: 1,
         args: "<project>",
         summary: "List project pages by UUID, name and modification date.",
         options: [JSON_OPTION],
@@ -820,6 +876,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page show",
+        maxPositionals: 2,
         args: "<project> <page>",
         summary: "Read a project's saved page content as Markdown.",
         options: [JSON_OPTION],
@@ -832,6 +889,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page outline",
+        maxPositionals: 2,
         args: "<project> <page>",
         summary: "Read the live top-level blocks: index, anchor, kind and preview.",
         options: [
@@ -848,6 +906,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page read",
+        maxPositionals: 2,
         args: "<project> <page>",
         summary: "Read one live block as Markdown, with a content fingerprint in JSON.",
         options: [
@@ -873,6 +932,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page stamp",
+        maxPositionals: 2,
         args: "<project> <page>",
         summary: "Assign missing anchors to top-level blocks; explicit live write.",
         options: [
@@ -889,6 +949,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page create",
+        maxPositionals: 1,
         args: "<project>",
         summary: "Create a project page, optionally with Markdown content.",
         options: [
@@ -927,6 +988,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page set",
+        maxPositionals: 2,
         args: "<project> <page>",
         summary: "Replace a page or one anchored block with Markdown.",
         options: [
@@ -976,6 +1038,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page insert",
+        maxPositionals: 2,
         args: "<project> <page>",
         summary: "Insert Markdown after a block or at the end.",
         options: [
@@ -1019,6 +1082,7 @@ export const GROUPS: ReadonlyArray<Group> = [
       },
       {
         name: "page rm",
+        maxPositionals: 2,
         args: "<project> <page>",
         summary: "Delete a page or one anchored block with explicit confirmation.",
         options: [
@@ -1061,18 +1125,21 @@ export const GROUPS: ReadonlyArray<Group> = [
     commands: [
       {
         name: "config",
+        maxPositionals: 0,
         summary: "Resolved settings and the cached page access path, reason and expiry.",
         options: [JSON_OPTION],
         examples: ["i-plane config"],
       },
       {
         name: "whoami",
+        maxPositionals: 0,
         summary: "The account behind the token.",
         options: [JSON_OPTION],
         examples: ["i-plane whoami"],
       },
       {
         name: "guide",
+        maxPositionals: 0,
         summary: "This map, the usual order of work, and how the tool behaves.",
         options: [JSON_OPTION],
         examples: ["i-plane guide"],
@@ -1112,7 +1179,8 @@ export const NOTES: ReadonlyArray<{ title: string; body: string }> = [
     body:
       "list returns every work item of the project. --limit exists but is not the usual path; " +
       "when it cuts the list, the last line says how many rows were hidden. Read that line " +
-      "before concluding anything — a truncated list looks exactly like a complete one.",
+      "before concluding anything — a truncated list looks exactly like a complete one. " +
+      "Search has a separate default limit of 10 and reports hasMore; raise --limit (up to 1000) or narrow the query.",
   },
   {
     title: "Descriptions are Markdown in both directions",

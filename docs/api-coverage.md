@@ -27,6 +27,30 @@ The compatibility target uses the `issues/` routes. The current public
 documents `work-items/` instead. A route migration must be verified against the
 target server; do not change paths solely to match a newer documentation release.
 
+## Argument, selection and completeness contracts
+
+Commands that address one resource reject extra positional tokens before
+configuration or requests. Quote a multiword reference, such as
+`i-plane project rm "Knowledge Base" --yes`. Create titles, comment/search text
+and bulk cycle/module additions retain their intentional variadic inputs.
+
+`done` preserves the selected completed-state UUID. Case-insensitive name ties
+are errors for explicit state selection; a state group still selects its first
+state. Use a state UUID when names collide.
+
+`list --limit` accepts a nonnegative integer, including zero. `search --limit`
+accepts integers from 1 to 1000 and defaults to 10. Search requests one additional
+match from the supported endpoint to detect truncation, then returns
+`{ rows, limit, hasMore }` in JSON. Text output explains when more matches exist;
+raise the bound or narrow the query. No exact total is inferred. This replaces
+the earlier bare search-results array and undocumented server-default cap.
+
+Paged collections require a valid results array and a nonempty continuation
+cursor when another page is advertised. Repeated cursors fail instead of
+repeating requests or returning duplicated rows. A final bare array remains
+supported. Calendar date fields accept valid dates in years 0001–9999; year zero
+is rejected before mutations, as it is outside the backend's date range.
+
 ## What modules and intake are for
 
 A module groups work toward a feature, milestone or other goal and may span

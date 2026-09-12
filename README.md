@@ -76,6 +76,10 @@ i-plane update APP-8 --state started
 i-plane done APP-8
 ```
 
+Workspace search returns up to 10 matches by default. Use `i-plane search "text"
+--limit 100` to raise the bound (maximum 1000); output reports when more matches
+exist. JSON search results contain `rows`, `limit` and `hasMore`.
+
 Replace `APP` and `APP-8` with your project and work item references. Add `--json`
 to any command for its structured result. Exit code `2` means an invalid call;
 `1` means an API or connection failure.

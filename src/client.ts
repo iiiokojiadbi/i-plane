@@ -201,20 +201,32 @@ export class PlaneClient {
   /** Follows cursors so callers get every row, not the first page. */
   async listAll<T>(path: string, options: RequestOptions = {}): Promise<ReadonlyArray<T>> {
     const rows: T[] = [];
+    const seen = new Set<string>();
+    const initialCursor = options.query?.cursor;
+    if (initialCursor !== undefined && initialCursor !== null) seen.add(String(initialCursor));
     let cursor: string | undefined;
     do {
       const page = await this.request<Page<T>>(path, {
         ...options,
         query: { ...options.query, ...(cursor === undefined ? {} : { cursor }) },
       });
-      // Some endpoints answer with a bare array rather than a page. Returning it
-      // directly discarded pages already collected, so it is appended instead.
       if (Array.isArray(page)) {
         rows.push(...(page as ReadonlyArray<T>));
         break;
       }
-      rows.push(...(page.results ?? []));
-      cursor = page.next_page_results === true ? page.next_cursor : undefined;
+      if (
+        !page ||
+        !Array.isArray(page.results) ||
+        (page.next_page_results !== undefined && typeof page.next_page_results !== "boolean")
+      )
+        throw new PlaneError(`Unexpected paginated response: ${path}`);
+      rows.push(...page.results);
+      if (page.next_page_results !== true) break;
+      if (typeof page.next_cursor !== "string" || !page.next_cursor.trim())
+        throw new PlaneError(`Missing or invalid pagination cursor: ${path}`);
+      if (seen.has(page.next_cursor)) throw new PlaneError(`Repeated pagination cursor: ${path}`);
+      seen.add(page.next_cursor);
+      cursor = page.next_cursor;
     } while (cursor !== undefined);
     return rows;
   }
