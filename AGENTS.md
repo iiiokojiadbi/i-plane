@@ -143,8 +143,9 @@ contents and size, and checks registry availability. Changes to shipped files
 must update both `package.json` files and the gate's allowlist.
 
 Publishing is irreversible. `node scripts/release.mjs` does not publish;
-`--publish` is the publishing path. Obtain authorization for publication and
-reuse it within the authorized release rather than asking repeatedly.
+`--publish` is the publishing path. The owner grants standing authorization to
+publish i-plane releases needed by completed work. After the release gate passes,
+publish and verify the registry version and `latest` tag without asking again.
 
 A successful npm upload can return HTTP 202 while registry processing continues.
 Do not republish the same version or treat a transient post-upload 404 as a
