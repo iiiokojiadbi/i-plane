@@ -7,11 +7,12 @@ import {
   type PreparedDocument,
   prepareMarkdown,
   readBlock,
+  requiredNodeReaders,
   stamp,
 } from "../page-document.ts";
 import { allowLosses, editDocument } from "../page-edit.ts";
 import { openLive } from "../page-live.ts";
-import type { PageClient } from "../page-transport.ts";
+import { assertNodeReaders, type PageClient } from "../page-transport.ts";
 import { required, requiredFlag } from "../validation.ts";
 import { type Page, pageOf, pagesPath, projectOfPage, requireWritablePage } from "./page-data.ts";
 
@@ -130,12 +131,19 @@ export const runPageContent = async (
         reportLosses(result.losses);
         printValue(result, json, (value) => value.markdown);
       } else {
+        const required = requiredNodeReaders([
+          ...live.fragment.toArray(),
+          ...(prepared?.fragment.toArray() ?? []),
+        ]);
+        const nodeReaders = required.length ? ((await client.nodeReaders?.()) ?? []) : [];
         let stamped: number | undefined,
           losses: string[] = [];
         client.markPageMutation?.();
         const delivered = await live.write((fragment) => {
-          if (command === "page stamp") stamped = stamp(fragment);
-          else
+          if (command === "page stamp") {
+            assertNodeReaders(requiredNodeReaders(fragment.toArray()), nodeReaders);
+            stamped = stamp(fragment);
+          } else
             losses = editDocument(
               fragment,
               {
@@ -146,6 +154,7 @@ export const runPageContent = async (
                 ifMatch: ifMatch?.toLowerCase(),
                 force,
                 allowLoss,
+                nodeReaders,
               },
               prepared,
             );

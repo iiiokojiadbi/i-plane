@@ -7,7 +7,7 @@ import { PlaneError } from "./client.ts";
 import { scrubHtml } from "./html-secrets.ts";
 import { scrub } from "./output.ts";
 import { parseReview, reviewCodeHtml, reviewHtml, validReviewDate } from "./page-review.ts";
-import type { PageClient } from "./page-transport.ts";
+import { assertNodeReaders, type PageClient } from "./page-transport.ts";
 import { htmlToMarkdown } from "./richtext.ts";
 
 interface TextPart {
@@ -15,6 +15,17 @@ interface TextPart {
   attributes?: Record<string, unknown>;
 }
 export type Block = Y.XmlElement | Y.XmlText;
+
+export const requiredNodeReaders = (nodes: readonly unknown[]): string[] => {
+  const required = new Set<string>();
+  const visit = (node: unknown): void => {
+    if (!(node instanceof Y.XmlElement)) return;
+    if (node.nodeName.toLowerCase() === "knowledgereview") required.add("knowledgeReview");
+    for (const child of node.toArray()) visit(child as Block);
+  };
+  nodes.forEach(visit);
+  return [...required];
+};
 export interface OutlineRow {
   index: number;
   anchor: string | null;
@@ -311,6 +322,8 @@ parser.renderer.rules.fence = (tokens, index, options, environment, renderer) =>
     throw new UsageError("A knowledge-review fence does not accept additional info fields.");
   if (token?.info.trim() === "knowledge-review") {
     const review = parseReview(token.content);
+    if (!environment?.reviewAsCode && environment?.requiredNodes instanceof Set)
+      environment.requiredNodes.add("knowledgeReview");
     return environment?.reviewAsCode ? reviewCodeHtml(review) : reviewHtml(review);
   }
   return (
@@ -344,9 +357,13 @@ const codeNodes = (node: Y.XmlFragment | Y.XmlElement): Y.XmlElement[] =>
         ? [...(child.nodeName.toLowerCase() === "codeblock" ? [child] : []), ...codeNodes(child)]
         : [],
     );
-const renderMarkdown = (markdown: string, reviewAsCode = false): string =>
+const renderMarkdown = (
+  markdown: string,
+  reviewAsCode = false,
+  requiredNodes?: Set<string>,
+): string =>
   parser
-    .render(markdown, { reviewAsCode })
+    .render(markdown, { reviewAsCode, requiredNodes })
     .trim()
     .replace(/(<li class="task-list-item">)\s*<p>([\s\S]*?)<\/p>/g, "$1$2")
     .replace(/(<input class="task-list-item-checkbox"[^>]*>) /g, "$1");
@@ -360,7 +377,10 @@ export const prepareMarkdown = async (
   client: PageClient,
   markdown: string,
 ): Promise<PreparedDocument> => {
-  const html = renderMarkdown(markdown);
+  const requiredNodes = new Set<string>();
+  const html = renderMarkdown(markdown, false, requiredNodes);
+  if (requiredNodes.size)
+    assertNodeReaders([...requiredNodes], (await client.nodeReaders?.()) ?? []);
   if (!html) {
     const doc = new Y.Doc();
     return { doc, fragment: doc.getXmlFragment("default"), losses: [] };

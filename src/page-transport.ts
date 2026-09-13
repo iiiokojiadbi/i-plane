@@ -18,6 +18,15 @@ export interface PageClient {
   listAll<T>(path: string, options?: RequestOptions): Promise<ReadonlyArray<T>>;
   preparePages?(projectId: string): Promise<"changed-identity" | undefined>;
   liveCredentials?(writable: boolean, refresh?: boolean): Promise<LiveCredentials | undefined>;
+  nodeReaders?(): Promise<readonly string[]>;
+}
+
+export function assertNodeReaders(required: readonly string[], supported: readonly string[]): void {
+  const missing = required.filter((name) => !supported.includes(name));
+  if (missing.length)
+    throw new PlaneError(
+      `The server has not confirmed a reader that preserves ${missing.join(", ")}. This node cannot be written safely; no document changes were sent.`,
+    );
 }
 interface RuntimeConfiguration {
   release: string | null;
@@ -56,6 +65,12 @@ export class AutoPageClient implements PageClient {
   }
   markPageMutation(): void {
     this.mutationStarted = true;
+  }
+
+  async nodeReaders(): Promise<readonly string[]> {
+    // Until the preservation endpoint is available, transport support cannot
+    // establish that a product node survives conversion and persistence.
+    return [];
   }
 
   private async runtime(): Promise<RuntimeConfiguration | undefined> {

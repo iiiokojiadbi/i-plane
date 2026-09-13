@@ -9,6 +9,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), "i-plane-mutations-"));
 const fixture = JSON.parse(await readFile(join(root, "tests/fixtures/pages/heading.json"), "utf8"));
 const cases = [
+  ["node preservation check bypassed", "src/page-transport.ts", "if (missing.length)", "if (false && missing.length)"],
   ["canonical review restoration removed", "src/page-html.ts", "const saved = attrs.id ? byAnchor.get(attrs.id) : undefined;", "const saved = undefined;"],
   ["canonical review omission ignored", "src/page-html.ts", "reviews.some((review) => !review.used)", "false"],
   ["page show drops review metadata", "src/page-html.ts", "return reviewCodeHtml({ date: safeDate, source: safeSource });", 'return "<p>Review omitted</p>";'],
@@ -58,6 +59,7 @@ try {
         [
           "test",
           "tests/page-document.test.ts",
+          "tests/page-node-readers.test.ts",
           "tests/page-commands.test.ts",
           "tests/page-api-key.test.ts",
           "tests/page-review.test.ts",

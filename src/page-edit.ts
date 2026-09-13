@@ -7,7 +7,9 @@ import {
   fingerprint,
   lossesFor,
   type PreparedDocument,
+  requiredNodeReaders,
 } from "./page-document.ts";
+import { assertNodeReaders } from "./page-transport.ts";
 
 export interface EditOptions {
   kind: "set" | "insert" | "rm";
@@ -17,6 +19,7 @@ export interface EditOptions {
   ifMatch?: string;
   force?: boolean;
   allowLoss?: boolean;
+  nodeReaders?: readonly string[];
 }
 export const allowLosses = (losses: ReadonlyArray<string>, allowed = false): void => {
   if (losses.length && !allowed)
@@ -56,6 +59,15 @@ export const editDocument = (
         throw new PlaneError("Unsupported document block; no changes were made.");
       return node.clone();
     }) ?? [];
+  const retained = fragment.toArray() as Block[];
+  if (options.kind !== "insert") retained.splice(index, target ? 1 : retained.length);
+  assertNodeReaders(
+    requiredNodeReaders([
+      ...retained,
+      ...(options.kind === "rm" ? [] : (prepared?.fragment.toArray() ?? [])),
+    ]),
+    options.nodeReaders ?? [],
+  );
   if (options.kind !== "insert") fragment.delete(index, target ? 1 : fragment.length);
   if (options.kind !== "rm" && clones.length) {
     fragment.insert(index, clones);

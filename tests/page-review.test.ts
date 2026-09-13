@@ -33,6 +33,7 @@ test("native review fixture reads as lossless Markdown with a useful outline", (
 
 test("review Markdown sends escaped semantic HTML and restores the original fields", async () => {
   const client = {
+    nodeReaders: async () => ["knowledgeReview"],
     request: async (path: string, options: { body: unknown }) => {
       expect(path).toBe("/live/convert-document");
       expect(options.body).toEqual({ description_html: fixture.html, variant: "rich" });
@@ -120,7 +121,7 @@ test("saved HTML page reads preserve review semantics independently of live depe
   const page = pageDetail({ id: "page", name: "Page", description_html: `<p>Before</p>${fixture.response.description_html}<p>After</p>` });
   expect(page.markdown).toBe(`Before\n\n${fixture.markdown}\n\nAfter`);
   expect(page.losses).toEqual([]);
-  const prepared = await prepareMarkdown({ request: async () => fixture.response } as unknown as PlaneClient, fixture.markdown);
+  const prepared = await prepareMarkdown({ nodeReaders: async () => ["knowledgeReview"], request: async () => fixture.response } as unknown as PlaneClient, fixture.markdown);
   documents.push(prepared.doc);
   const node = prepared.fragment.get(0) as Y.XmlElement;
   expect(node.nodeName).toBe("knowledgeReview");

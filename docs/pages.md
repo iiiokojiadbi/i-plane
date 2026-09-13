@@ -149,6 +149,16 @@ supports `--json`. Run `i-plane page set --help` for flags and examples.
 
 ## Knowledge review marks
 
+Writing a product node requires confirmation that the server preserves it.
+Until the reader-capability endpoint is available, `knowledgeReview` writes are
+refused with exit code **1**, before conversion, page creation or document changes.
+This applies to create, replace, insert and edits that would retain an existing
+review node. `--allow-loss` and `--force` cannot override it. Ordinary Markdown
+and explicit removal of the last review node remain supported. Existing review
+content can still be read. Reader discovery will use the existing per-instance
+capability mechanism and `--refresh-pages`; transport support alone is not proof
+of document-schema support.
+
 Saved detail responses from the matching extension include canonical JSON for
 review restoration. If older HTML lost review attributes, `page show` can recover
 them by the retained block ID. Missing or ambiguous IDs, invalid canonical fields,

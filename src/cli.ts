@@ -40,7 +40,7 @@ import {
   knownFlags,
 } from "./registry.ts";
 
-const VERSION = "2.0.0";
+const VERSION = "2.0.1";
 
 /** Remembered so a failure can be answered with that command's own hint. */
 let current: string | undefined;
