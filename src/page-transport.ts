@@ -1,7 +1,12 @@
 import { UsageError } from "./args.ts";
 import { PlaneClient, PlaneError, type RequestOptions } from "./client.ts";
 import type { Config } from "./config.ts";
-import { type PageCapability, PageCapabilityCache } from "./page-cache.ts";
+import {
+  type NodeReaderCapability,
+  PAGE_CAPABILITY_TTL,
+  type PageCapability,
+  PageCapabilityCache,
+} from "./page-cache.ts";
 import type { SessionClient } from "./session.ts";
 
 export class PageIdentityChanged extends PlaneError {}
@@ -31,7 +36,21 @@ export function assertNodeReaders(required: readonly string[], supported: readon
 interface RuntimeConfiguration {
   release: string | null;
   extensions: Array<{ id: string; enabled: boolean }>;
+  coreVersion?: string;
+  protocolVersion?: number;
+  readerFingerprint?: string;
 }
+const readerIdentity = (runtime: RuntimeConfiguration | undefined): string =>
+  JSON.stringify(
+    runtime
+      ? {
+          coreVersion: runtime.coreVersion ?? null,
+          protocolVersion: runtime.protocolVersion ?? null,
+          release: runtime.release,
+          fingerprint: runtime.readerFingerprint ?? null,
+        }
+      : null,
+  );
 
 /** Choose capabilities, never fall back from an authorization failure. */
 export class AutoPageClient implements PageClient {
@@ -47,6 +66,7 @@ export class AutoPageClient implements PageClient {
   private readonly refresh: boolean;
   private commandScope = false;
   private mutationStarted = false;
+  private readerCapability?: NodeReaderCapability;
 
   constructor(
     config: Config,
@@ -68,9 +88,87 @@ export class AutoPageClient implements PageClient {
   }
 
   async nodeReaders(): Promise<readonly string[]> {
-    // Until the preservation endpoint is available, transport support cannot
-    // establish that a product node survives conversion and persistence.
-    return [];
+    await this.initialize();
+    // Recheck the current runtime even on a cache hit: a rollback must not inherit
+    // a positive preservation claim from the previously installed adapter.
+    const runtime = await this.runtime();
+    const runtimeIdentity = readerIdentity(runtime);
+    const cached = this.readerCapability ?? this.selection?.nodeReaders;
+    if (cached?.runtimeIdentity === runtimeIdentity && cached.expiresAt > Date.now())
+      return cached.nodes;
+    const nodes: string[] = [];
+    if (runtime) {
+      let value: unknown;
+      let missing = false;
+      try {
+        value = await this.api.request<unknown>("/api/extensions/node-readers/");
+      } catch (error) {
+        if (!(error instanceof PlaneError) || error.status !== 404) throw error;
+        missing = true;
+      }
+      if (!missing) {
+        if (
+          !value ||
+          typeof value !== "object" ||
+          !("schemaVersion" in value) ||
+          value.schemaVersion !== 1 ||
+          !("coreVersion" in value) ||
+          typeof value.coreVersion !== "string" ||
+          value.coreVersion !== runtime.coreVersion ||
+          !("protocolVersion" in value) ||
+          value.protocolVersion !== 1 ||
+          value.protocolVersion !== runtime.protocolVersion ||
+          !("release" in value) ||
+          value.release !== runtime.release ||
+          !("fingerprint" in value) ||
+          typeof value.fingerprint !== "string" ||
+          !/^[a-f0-9]{64}$/.test(value.fingerprint) ||
+          value.fingerprint !== runtime.readerFingerprint ||
+          !("readers" in value) ||
+          !Array.isArray(value.readers) ||
+          value.readers.length > 128
+        )
+          throw new PlaneError(
+            "Invalid or mismatched document reader inventory; preservation is not confirmed.",
+          );
+        const ids = new Set<string>();
+        for (const reader of value.readers) {
+          if (
+            !reader ||
+            typeof reader.id !== "string" ||
+            !/^[a-z][a-z0-9-]*$/.test(reader.id) ||
+            ids.has(reader.id) ||
+            !Number.isSafeInteger(reader.formatVersion) ||
+            reader.formatVersion < 1 ||
+            !Array.isArray(reader.nodeNames) ||
+            !reader.nodeNames.length ||
+            !reader.nodeNames.every(
+              (name: unknown) =>
+                typeof name === "string" && /^[a-zA-Z][a-zA-Z0-9_-]{0,127}$/.test(name),
+            )
+          )
+            throw new PlaneError(
+              "Invalid document reader declaration; preservation is not confirmed.",
+            );
+          ids.add(reader.id);
+          if (reader.formatVersion === 1) nodes.push(...reader.nodeNames);
+        }
+        if (nodes.length > 128 || new Set(nodes).size !== nodes.length)
+          throw new PlaneError(
+            "Invalid document reader inventory; duplicate or excessive node names.",
+          );
+      }
+    }
+    const checkedAt = Date.now();
+    this.readerCapability = {
+      runtimeIdentity,
+      nodes,
+      checkedAt,
+      expiresAt: checkedAt + PAGE_CAPABILITY_TTL,
+    };
+    if (this.selection)
+      this.selection = await this.cache.writeNodeReaders(this.selection, this.readerCapability);
+    return nodes;
   }
 
   private async runtime(): Promise<RuntimeConfiguration | undefined> {
@@ -106,6 +204,7 @@ export class AutoPageClient implements PageClient {
       runtime ? "extension-disabled" : "missing-route",
       !!runtime,
       !!this.config.token.value,
+      this.readerCapability,
     );
   }
 
@@ -146,7 +245,13 @@ export class AutoPageClient implements PageClient {
       try {
         const rows = await this.api.request<unknown>(path);
         this.validateList(rows, path);
-        this.selection = await this.cache.write("api-key", "public-list", true, true);
+        this.selection = await this.cache.write(
+          "api-key",
+          "public-list",
+          true,
+          true,
+          this.readerCapability,
+        );
         this.firstLists.set(path, rows);
       } catch (error) {
         if (!(error instanceof PlaneError) || error.status !== 404) throw error;

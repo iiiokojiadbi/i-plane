@@ -69,6 +69,7 @@ test("CLI returns exit 1 and sends no mutation when reader confirmation is unava
   let writes = 0;
   const api = Bun.serve({ port: 0, fetch(request) {
     if (request.method !== "GET") { writes++; return Response.json({ error: "Unexpected mutation" }, { status: 500 }); }
+    if (new URL(request.url).pathname.startsWith("/api/extensions/")) return new Response(null, {status:404});
     if (new URL(request.url).pathname.endsWith("/pages/")) return Response.json([]);
     return Response.json([{ id: "11111111-1111-4111-8111-111111111111", identifier: "APP", name: "Project" }]);
   } });

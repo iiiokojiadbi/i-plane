@@ -6,6 +6,12 @@ import { join } from "node:path";
 
 export type PageMode = "api-key" | "session";
 export type DetectionReason = "public-list" | "missing-route" | "extension-disabled";
+export interface NodeReaderCapability {
+  runtimeIdentity: string;
+  nodes: string[];
+  checkedAt: number;
+  expiresAt: number;
+}
 export interface PageCapability {
   version: 1;
   mode: PageMode;
@@ -14,6 +20,7 @@ export interface PageCapability {
   expiresAt: number;
   runtime: boolean;
   keyProbe: boolean;
+  nodeReaders?: NodeReaderCapability;
 }
 // Bound stale server capabilities after an upgrade without probing every command.
 export const PAGE_CAPABILITY_TTL = 5 * 60 * 1000;
@@ -40,7 +47,7 @@ export class PageCapabilityCache {
       );
       try {
         const info = await file.stat();
-        if (!info.isFile() || info.size > 2048 || info.mode & 0o077) return undefined;
+        if (!info.isFile() || info.size > 16384 || info.mode & 0o077) return undefined;
         const value = JSON.parse(await file.readFile("utf8")) as PageCapability;
         const now = this.now();
         if (
@@ -57,6 +64,22 @@ export class PageCapabilityCache {
         )
           return undefined;
         if ((value.mode === "api-key") !== (value.reason === "public-list")) return undefined;
+        const readers = value.nodeReaders;
+        if (
+          readers &&
+          (typeof readers.runtimeIdentity !== "string" ||
+            readers.runtimeIdentity.length > 1024 ||
+            !Array.isArray(readers.nodes) ||
+            readers.nodes.length > 128 ||
+            !readers.nodes.every(
+              (name) => typeof name === "string" && /^[a-zA-Z][a-zA-Z0-9_-]{0,127}$/.test(name),
+            ) ||
+            !Number.isFinite(readers.checkedAt) ||
+            readers.checkedAt > now ||
+            readers.expiresAt <= now ||
+            readers.expiresAt !== readers.checkedAt + PAGE_CAPABILITY_TTL)
+        )
+          delete value.nodeReaders;
         return value;
       } finally {
         await file.close();
@@ -78,6 +101,7 @@ export class PageCapabilityCache {
     reason: DetectionReason,
     runtime: boolean,
     keyProbe: boolean,
+    nodeReaders?: NodeReaderCapability,
   ): Promise<PageCapability> {
     const checkedAt = this.now();
     const value: PageCapability = {
@@ -88,7 +112,17 @@ export class PageCapabilityCache {
       keyProbe,
       checkedAt,
       expiresAt: checkedAt + PAGE_CAPABILITY_TTL,
+      ...(nodeReaders ? { nodeReaders } : {}),
     };
+    return this.persist(value);
+  }
+  async writeNodeReaders(
+    selection: PageCapability,
+    nodeReaders: NodeReaderCapability,
+  ): Promise<PageCapability> {
+    return this.persist({ ...selection, nodeReaders });
+  }
+  private async persist(value: PageCapability): Promise<PageCapability> {
     const temporary = `${this.path}.${randomUUID()}.tmp`;
     try {
       await mkdir(this.directory, { recursive: true, mode: 0o700 });

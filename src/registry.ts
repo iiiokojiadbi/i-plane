@@ -982,7 +982,7 @@ export const GROUPS: ReadonlyArray<Group> = [
         notes: [
           "Success confirms delivery to the live server, not database persistence. Saved HTML can lag, usually about ten seconds with no guaranteed upper bound. No automatic mutation retries.",
           "Conversion losses require --allow-loss. Unsupported rich nodes or marks are reported; code-block languages are repaired before writing. Nested pages and --parent are unsupported by the project-page API.",
-          "Product nodes require confirmed server readers. Currently knowledgeReview writes are refused before sending changes; --allow-loss does not bypass this check.",
+          "Product nodes require confirmed server readers. Missing confirmation refuses knowledgeReview writes before changes; --refresh-pages rechecks capabilities, and --allow-loss cannot bypass preservation.",
           "Creation with content uses two steps. If writing fails after creation, the error includes the created page UUID; inspect it before retrying.",
         ],
         next: ['i-plane page outline DEBUG "Release notes"'],
@@ -1034,7 +1034,7 @@ export const GROUPS: ReadonlyArray<Group> = [
           "Success confirms delivery to the live server, not database persistence. Saved HTML can lag, usually about ten seconds with no guaranteed upper bound. No automatic mutation retries.",
           "For a block edit, read with --json first and pass its fingerprint as --if-match. The first replacement block inherits the anchor; additional blocks receive new anchors. Repeating a command is not idempotent.",
           "Conversion losses require --allow-loss. Unsupported rich nodes or marks are reported; code-block languages are repaired before writing. Nested pages and --parent are unsupported by the project-page API.",
-          "Product nodes require confirmed server readers. Currently knowledgeReview writes are refused before sending changes; --allow-loss does not bypass this check.",
+          "Product nodes require confirmed server readers. Missing confirmation refuses knowledgeReview writes before changes; --refresh-pages rechecks capabilities, and --allow-loss cannot bypass preservation.",
         ],
         next: ['i-plane page outline DEBUG "Release notes"'],
       },
@@ -1079,7 +1079,7 @@ export const GROUPS: ReadonlyArray<Group> = [
         notes: [
           "Success confirms delivery to the live server, not database persistence. Saved HTML can lag, usually about ten seconds with no guaranteed upper bound. No automatic mutation retries.",
           "Conversion losses require --allow-loss. Unsupported rich nodes or marks are reported; code-block languages are repaired before writing. Nested pages and --parent are unsupported by the project-page API.",
-          "Product nodes require confirmed server readers. Currently knowledgeReview writes are refused before sending changes; --allow-loss does not bypass this check.",
+          "Product nodes require confirmed server readers. Missing confirmation refuses knowledgeReview writes before changes; --refresh-pages rechecks capabilities, and --allow-loss cannot bypass preservation.",
         ],
         next: ['i-plane page outline DEBUG "Release notes"'],
       },

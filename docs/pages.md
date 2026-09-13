@@ -150,14 +150,21 @@ supports `--json`. Run `i-plane page set --help` for flags and examples.
 ## Knowledge review marks
 
 Writing a product node requires confirmation that the server preserves it.
-Until the reader-capability endpoint is available, `knowledgeReview` writes are
-refused with exit code **1**, before conversion, page creation or document changes.
-This applies to create, replace, insert and edits that would retain an existing
-review node. `--allow-loss` and `--force` cannot override it. Ordinary Markdown
-and explicit removal of the last review node remain supported. Existing review
-content can still be read. Reader discovery will use the existing per-instance
-capability mechanism and `--refresh-pages`; transport support alone is not proof
-of document-schema support.
+Core 0.2.1 or newer reports retained node readers through
+`GET /api/extensions/node-readers/`, independently of the wiki interface.
+The CLI recognizes format version 1 and checks that the inventory matches the
+current core, runtime release and reader fingerprint. Results share the existing
+per-instance capability cache and `--refresh-pages`. Every custom-node write
+rechecks the runtime identity, so a rollback cannot reuse a previous positive claim.
+
+An absent endpoint means refusal with exit code **1**, before conversion, page
+creation or document changes. `401`/`403` remain access errors; malformed inventory,
+service errors and disagreement between runtimes do not mean an absent feature.
+The rule applies to create, replace, insert and edits retaining existing review
+nodes. `--allow-loss` and `--force` cannot override it. Ordinary Markdown and
+explicit removal of the last review remain supported; existing review content
+can still be read. A converter response that loses confirmed review nodes or
+attributes is also rejected before a document write.
 
 Saved detail responses from the matching extension include canonical JSON for
 review restoration. If older HTML lost review attributes, `page show` can recover

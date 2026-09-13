@@ -6,7 +6,13 @@ import { UsageError } from "./args.ts";
 import { PlaneError } from "./client.ts";
 import { scrubHtml } from "./html-secrets.ts";
 import { scrub } from "./output.ts";
-import { parseReview, reviewCodeHtml, reviewHtml, validReviewDate } from "./page-review.ts";
+import {
+  parseReview,
+  type Review,
+  reviewCodeHtml,
+  reviewHtml,
+  validReviewDate,
+} from "./page-review.ts";
 import { assertNodeReaders, type PageClient } from "./page-transport.ts";
 import { htmlToMarkdown } from "./richtext.ts";
 
@@ -324,6 +330,8 @@ parser.renderer.rules.fence = (tokens, index, options, environment, renderer) =>
     const review = parseReview(token.content);
     if (!environment?.reviewAsCode && environment?.requiredNodes instanceof Set)
       environment.requiredNodes.add("knowledgeReview");
+    if (!environment?.reviewAsCode && Array.isArray(environment?.expectedReviews))
+      environment.expectedReviews.push(review);
     return environment?.reviewAsCode ? reviewCodeHtml(review) : reviewHtml(review);
   }
   return (
@@ -361,9 +369,10 @@ const renderMarkdown = (
   markdown: string,
   reviewAsCode = false,
   requiredNodes?: Set<string>,
+  expectedReviews?: Review[],
 ): string =>
   parser
-    .render(markdown, { reviewAsCode, requiredNodes })
+    .render(markdown, { reviewAsCode, requiredNodes, expectedReviews })
     .trim()
     .replace(/(<li class="task-list-item">)\s*<p>([\s\S]*?)<\/p>/g, "$1$2")
     .replace(/(<input class="task-list-item-checkbox"[^>]*>) /g, "$1");
@@ -378,7 +387,8 @@ export const prepareMarkdown = async (
   markdown: string,
 ): Promise<PreparedDocument> => {
   const requiredNodes = new Set<string>();
-  const html = renderMarkdown(markdown, false, requiredNodes);
+  const expectedReviews: Review[] = [];
+  const html = renderMarkdown(markdown, false, requiredNodes, expectedReviews);
   if (requiredNodes.size)
     assertNodeReaders([...requiredNodes], (await client.nodeReaders?.()) ?? []);
   if (!html) {
@@ -405,6 +415,25 @@ export const prepareMarkdown = async (
       throw new Error("Missing document binary");
     Y.applyUpdate(doc, Buffer.from(data.description_binary, "base64"));
     const fragment = doc.getXmlFragment("default");
+    if (expectedReviews.length) {
+      const actual: Review[] = [];
+      const visit = (parent: Y.XmlFragment | Y.XmlElement): void => {
+        for (const child of parent.toArray())
+          if (child instanceof Y.XmlElement) {
+            if (child.nodeName.toLowerCase() === "knowledgereview")
+              actual.push({
+                date: String(child.getAttribute("reviewedAt") ?? ""),
+                source: String(child.getAttribute("source") ?? ""),
+              });
+            else visit(child);
+          }
+      };
+      visit(fragment);
+      if (JSON.stringify(actual) !== JSON.stringify(expectedReviews))
+        throw new PlaneError(
+          "The converter did not preserve the confirmed knowledgeReview nodes and attributes. No document changes were sent.",
+        );
+    }
     const languages = parser
       .parse(markdown, {})
       .filter(
