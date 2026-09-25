@@ -5,6 +5,7 @@ import * as Y from "yjs";
 import { PlaneError } from "./client.ts";
 import { websocketProxy } from "./http.ts";
 import { guardSecret, scrub } from "./output.ts";
+import { type PageTarget, pagePlacement } from "./page-placement.ts";
 import type { PageClient } from "./page-transport.ts";
 
 export interface Delivery {
@@ -156,11 +157,12 @@ export class LiveDocument {
 
 export const openLive = async (
   client: PageClient,
-  projectId: string,
+  target: PageTarget,
   pageId: string,
   options: { writable?: boolean } = {},
 ): Promise<LiveDocument> => {
-  await client.preparePages?.(projectId);
+  const placement = pagePlacement(target);
+  await client.preparePages?.(target);
   const writable = !!options.writable;
   let credentials = await client.liveCredentials?.(writable);
   if (!credentials) {
@@ -182,8 +184,11 @@ export const openLive = async (
   for (let attempt = 0; attempt < 2; attempt++) {
     const url = new URL(`${client.config.url.value}/live/collaboration`);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.searchParams.set("documentType", "project_page");
-    url.searchParams.set("projectId", projectId);
+    url.searchParams.set(
+      "documentType",
+      placement.kind === "wiki" ? "workspace_page" : "project_page",
+    );
+    if (placement.kind === "project") url.searchParams.set("projectId", placement.projectId);
     url.searchParams.set("workspaceSlug", client.config.workspace.value);
     if (credentials.release) url.searchParams.set("forPlaneRelease", credentials.release);
     const live = new LiveDocument(url.href, pageId, credentials.token);

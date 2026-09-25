@@ -14,7 +14,7 @@ import { allowLosses, editDocument } from "../page-edit.ts";
 import { openLive } from "../page-live.ts";
 import { assertNodeReaders, type PageClient } from "../page-transport.ts";
 import { required, requiredFlag } from "../validation.ts";
-import { type Page, pageOf, pagesPath, projectOfPage, requireWritablePage } from "./page-data.ts";
+import { type Page, pageOf, pagesPath, placementOf, requireWritablePage } from "./page-data.ts";
 
 const input = async (args: ParsedArgs, optional = false): Promise<string | undefined> => {
   const file = flagValue(args, "file"),
@@ -47,13 +47,16 @@ export const runPageContent = async (
   client: PageClient,
   args: ParsedArgs,
   json: boolean,
+  wiki = false,
 ): Promise<void> => {
-  const projectRef = required(args.positionals[0], "a project");
+  const projectRef = wiki ? undefined : required(args.positionals[0], "a project");
   const creating = command === "page create",
     removing = command === "page rm";
   const ref = creating
     ? requiredFlag(args, "name")
-    : required(args.positionals[1], "a page UUID or name");
+    : required(args.positionals[wiki ? 0 : 1], "a page UUID or name");
+  const parentRef =
+    wiki && creating && args.flags.has("parent") ? requiredFlag(args, "parent") : undefined;
   const block = args.flags.has("block") ? requiredFlag(args, "block") : undefined,
     after = args.flags.has("after") ? requiredFlag(args, "after") : undefined,
     atEnd = flagBool(args, "at-end");
@@ -72,7 +75,9 @@ export const runPageContent = async (
     creating || command === "page set" || command === "page insert"
       ? await input(args, creating)
       : undefined;
-  const project = await projectOfPage(client, projectRef);
+  const placement = await placementOf(client, projectRef);
+  const parent =
+    parentRef === undefined ? undefined : (await pageOf(client, placement, parentRef)).id;
   let prepared: PreparedDocument | undefined;
   let created: Page | undefined;
   try {
@@ -81,20 +86,20 @@ export const runPageContent = async (
       allowLosses(prepared.losses, allowLoss);
     }
     const page = creating
-      ? await client.request<Page>(pagesPath(project.id), {
+      ? await client.request<Page>(pagesPath(placement), {
           method: "POST",
-          body: { name: ref, access: 0 },
+          body: { name: ref, access: 0, ...(parent === undefined ? {} : { parent }) },
         })
-      : await pageOf(client, project.id, ref);
+      : await pageOf(client, placement, ref);
     if (creating) created = page;
     if (creating && !prepared) {
       printValue({ id: page.id, name: page.name }, json, receipt);
       return;
     }
     if (removing && !block) {
-      requireWritablePage(page, true);
-      const path = `${pagesPath(project.id)}${page.id}/`;
-      if (!page.archived_at) {
+      if (!wiki) requireWritablePage(page, true);
+      const path = `${pagesPath(placement)}${page.id}/`;
+      if (!wiki && !page.archived_at) {
         try {
           await client.request(`${path}archive/`, { method: "POST" });
         } catch (error) {
@@ -107,7 +112,7 @@ export const runPageContent = async (
         await client.request(path, { method: "DELETE" });
       } catch (error) {
         throw new PlaneError(
-          `Page ${page.id} was archived, but deletion was not confirmed: ${error instanceof Error ? error.message : String(error)}. Inspect it by UUID before retrying.`,
+          `${wiki ? `Deletion of wiki page ${page.id} was not confirmed` : `Page ${page.id} was archived, but deletion was not confirmed`}: ${error instanceof Error ? error.message : String(error)}. Inspect it by UUID before retrying.`,
         );
       }
       printValue({ id: page.id, deleted: true }, json, receipt);
@@ -115,7 +120,7 @@ export const runPageContent = async (
     }
     const reading = command === "page outline" || command === "page read";
     if (!reading) requireWritablePage(page);
-    const live = await openLive(client, project.id, page.id, { writable: !reading });
+    const live = await openLive(client, placement, page.id, { writable: !reading });
     try {
       if (command === "page outline") {
         printValue(outline(live.fragment), json, (rows) =>

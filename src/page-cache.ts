@@ -5,7 +5,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export type PageMode = "api-key" | "session";
-export type DetectionReason = "public-list" | "missing-route" | "extension-disabled";
+export type DetectionReason =
+  | "public-list"
+  | "missing-route"
+  | "extension-disabled"
+  | "wiki-runtime";
 export interface NodeReaderCapability {
   runtimeIdentity: string;
   nodes: string[];
@@ -31,12 +35,17 @@ export class PageCapabilityCache {
   readonly path: string;
   readonly directory: string;
   private readonly now: () => number;
-  constructor(url: string, directory = pageCacheDirectory(), now = Date.now) {
+  constructor(
+    url: string,
+    directory = pageCacheDirectory(),
+    now = Date.now,
+    placement = "project",
+  ) {
     this.directory = directory;
     this.now = now;
     this.path = join(
       directory,
-      `${createHash("sha256").update(new URL(url).href.replace(/\/+$/, "")).digest("hex")}.json`,
+      `${createHash("sha256").update(new URL(url).href.replace(/\/+$/, "")).digest("hex")}${placement === "wiki" ? "-wiki" : ""}.json`,
     );
   }
   async read(): Promise<PageCapability | undefined> {
@@ -53,7 +62,9 @@ export class PageCapabilityCache {
         if (
           value.version !== 1 ||
           !["api-key", "session"].includes(value.mode) ||
-          !["public-list", "missing-route", "extension-disabled"].includes(value.reason) ||
+          !["public-list", "missing-route", "extension-disabled", "wiki-runtime"].includes(
+            value.reason,
+          ) ||
           typeof value.runtime !== "boolean" ||
           typeof value.keyProbe !== "boolean" ||
           !Number.isFinite(value.checkedAt) ||
@@ -63,7 +74,8 @@ export class PageCapabilityCache {
           value.expiresAt !== value.checkedAt + PAGE_CAPABILITY_TTL
         )
           return undefined;
-        if ((value.mode === "api-key") !== (value.reason === "public-list")) return undefined;
+        if ((value.mode === "api-key") !== ["public-list", "wiki-runtime"].includes(value.reason))
+          return undefined;
         const readers = value.nodeReaders;
         if (
           readers &&
@@ -146,10 +158,19 @@ export class PageCapabilityCache {
 }
 export const pageTransportReport = async (url: string, refresh = false) => {
   const cache = new PageCapabilityCache(url);
-  const cleared = refresh ? await cache.clear() : false;
+  const cleared = refresh
+    ? (
+        await Promise.all([
+          cache.clear(),
+          new PageCapabilityCache(url, undefined, undefined, "wiki").clear(),
+        ])
+      ).every(Boolean)
+    : false;
   const value = cleared ? undefined : await cache.read();
   const reasons: Record<DetectionReason, string> = {
     "public-list": "The public project-page list accepted an API key.",
+    "wiki-runtime":
+      "The server advertises wiki access by API key; permissions are checked on each request.",
     "missing-route": "The public page route and extension configuration were absent.",
     "extension-disabled": "The instance reports that API-key pages are unavailable.",
   };

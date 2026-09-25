@@ -1,6 +1,6 @@
 {
   "name": "i-plane",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "Compact Plane CLI for coding agents: tasks, projects, live pages, cycles, modules and intake.",
   "type": "module",
   "license": "MIT",

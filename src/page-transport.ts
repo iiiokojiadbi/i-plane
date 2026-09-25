@@ -7,6 +7,7 @@ import {
   type PageCapability,
   PageCapabilityCache,
 } from "./page-cache.ts";
+import { type PageTarget, pagePlacement } from "./page-placement.ts";
 import type { SessionClient } from "./session.ts";
 
 export class PageIdentityChanged extends PlaneError {}
@@ -21,7 +22,7 @@ export interface PageClient {
   markPageMutation?(): void;
   request<T>(path: string, options?: RequestOptions): Promise<T>;
   listAll<T>(path: string, options?: RequestOptions): Promise<ReadonlyArray<T>>;
-  preparePages?(projectId: string): Promise<"changed-identity" | undefined>;
+  preparePages?(target: PageTarget): Promise<"changed-identity" | undefined>;
   liveCredentials?(writable: boolean, refresh?: boolean): Promise<LiveCredentials | undefined>;
   nodeReaders?(): Promise<readonly string[]>;
 }
@@ -67,14 +68,23 @@ export class AutoPageClient implements PageClient {
   private commandScope = false;
   private mutationStarted = false;
   private readerCapability?: NodeReaderCapability;
+  private readonly wiki: boolean;
 
   constructor(
     config: Config,
-    options: { refresh?: boolean; cache?: PageCapabilityCache; sessionDirectory?: string } = {},
+    options: {
+      refresh?: boolean;
+      cache?: PageCapabilityCache;
+      sessionDirectory?: string;
+      placement?: "wiki";
+    } = {},
   ) {
     this.config = config;
     this.api = new PlaneClient(config);
-    this.cache = options.cache ?? new PageCapabilityCache(config.url.value);
+    this.wiki = options.placement === "wiki";
+    this.cache =
+      options.cache ??
+      new PageCapabilityCache(config.url.value, undefined, undefined, options.placement);
     this.refresh = options.refresh ?? false;
     this.sessionDirectory = options.sessionDirectory;
   }
@@ -211,6 +221,30 @@ export class AutoPageClient implements PageClient {
   private async initialize(): Promise<void> {
     if (this.initialized) return;
     if (this.refresh) await this.cache.clear();
+    if (this.wiki) {
+      if (!this.config.token.value)
+        throw new UsageError("Wiki commands require PLANE_API_KEY or --token.");
+      const runtime = await this.runtime();
+      if (
+        !runtime?.release ||
+        !["workspace-wiki", "api-key-pages"].every((id) =>
+          runtime.extensions.some((entry) => entry.id === id && entry.enabled),
+        )
+      )
+        throw new PlaneError(
+          "Wiki commands are not supported by this server: enabled workspace-wiki and API-key pages are required.",
+        );
+      const cached = await this.cache.read();
+      this.selection = await this.cache.write(
+        "api-key",
+        "wiki-runtime",
+        true,
+        true,
+        cached?.nodeReaders,
+      );
+      this.initialized = true;
+      return;
+    }
     this.selection = this.refresh ? undefined : await this.cache.read();
     // A selection made without a key cannot suppress a newly configured key probe.
     if (this.config.token.value && this.selection && !this.selection.keyProbe)
@@ -236,8 +270,13 @@ export class AutoPageClient implements PageClient {
     return this.sessionClient;
   }
 
-  async preparePages(projectId: string): Promise<"changed-identity" | undefined> {
+  async preparePages(target: PageTarget): Promise<"changed-identity" | undefined> {
+    const placement = pagePlacement(target);
+    if ((placement.kind === "wiki") !== this.wiki)
+      throw new PlaneError("Page client placement mismatch.");
     await this.initialize();
+    if (placement.kind === "wiki") return;
+    const projectId = placement.projectId;
     if (this.prepared.has(projectId)) return;
     const initialMode = this.selection?.mode ?? "api-key";
     if (!this.selection) {
@@ -264,6 +303,8 @@ export class AutoPageClient implements PageClient {
   }
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    if (this.wiki && /(?:^|\/)projects(?:\/|$)/.test(path))
+      throw new PlaneError("Wiki commands cannot use project routes.");
     await this.initialize();
     const match = /^projects\/([^/]+)\/pages\//.exec(path);
     if (match?.[1]) await this.preparePages(match[1]);

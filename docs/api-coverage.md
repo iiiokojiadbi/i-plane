@@ -124,7 +124,36 @@ API endpoints; the diagnostic points to `issueId` from an earlier JSON response.
 - This is an inventory of the implemented surface, not a claim to cover every
   endpoint in every edition of Plane.
 
-## Project pages
+## Project and wiki pages
+
+`wiki list` and `wiki show|outline|read|stamp|create|set|insert|rm` use workspace
+placement through the same page handlers, converters and live client. HTTP uses
+`/api/v1/workspaces/{slug}/pages/`; live uses `workspace_page` and omits `projectId`.
+Runtime discovery requires both wiki and API-key pages enabled. Unsupported
+servers fail explicitly, with no project or session fallback. Permissions remain
+server-owned and are checked for each operation.
+
+The wiki list includes accessible nested and archived pages, preserves parent
+UUIDs and follows native manual sibling order in parent-first traversal. Creation
+supports `--parent`; whole-page deletion requires prior explicit archiving in
+Plane. Project commands retain their original behavior. PDF and relocation are
+outside the CLI surface.
+
+`tests/wiki-commands.test.ts` covers placement routing, live scope, hierarchy,
+parent resolution, deletion policy, runtime failures and shared editing. The
+mutation runner requires each wiki mutation to fail its declared test and refuses
+unrelated test failures. Run the shared browser acceptance script with a private
+fixture containing `workspace_slug`, `api_key` and `cookie`:
+
+```bash
+node scripts/page-key-acceptance.mjs "$ISOLATED_ORIGIN" "$PRIVATE_FIXTURE" "$OUTPUT" --wiki
+```
+
+This creates a temporary root and child, checks both CLI/browser writers, stale
+fingerprints, ancestry and deletion refusal, then explicitly archives and deletes
+only those fixtures. Wiki ancestry requests canceled by snapshot refresh are
+recorded separately and require a successful replacement response; other browser
+errors fail the check.
 
 `pages` and `page show` automatically select API-key or native session page access. `page outline`, `page read`,
 `page stamp`, `page create`, `page set`, `page insert` and block removal use the
@@ -246,3 +275,26 @@ independent reviews of formatting and command targeting found no remaining
 confirmed issues. The complete release dry run passed 1,338 tests and twelve
 intentional mutation checks. The aggregate extension review remains separately
 tracked in PLX-12; these results do not claim production deployment or publication.
+
+
+### Wiki command acceptance (IPL-27)
+
+The 2.1.0 release candidate passed 1,545 tests, TypeScript, formatting, built Node
+smoke checks and package inventory validation. All 23 page mutations were detected;
+the seven new wiki mutations each failed their declared test. Built Node checks
+also confirmed explicit refusal on an HTTP server without wiki support, no page
+or project requests after that refusal, and exit 2 for a surplus project argument.
+
+On the isolated Plane 1.4.2 stack with core 0.3.3, the initial probe used the
+existing CLI live transport with an API key and no project identifier. Creation,
+acknowledged editing, an independent live read and saved HTML persistence passed.
+No server changes were needed.
+
+The built CLI then passed the shared browser scenario on a new wiki root and
+child: parent creation, listing, both writers, stale fingerprints, insertion,
+block deletion, stamping, reload and refusal to delete an unarchived page.
+Temporary pages were explicitly archived and deleted; existing fixtures were
+untouched. The browser had no console errors, HTTP failures or unhandled errors.
+Two ancestry request cancellations had successful replacement responses, matching
+the existing snapshot effect's cancellation contract. Project regression tests
+passed with their existing command and deletion semantics.

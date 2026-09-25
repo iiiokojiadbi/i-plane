@@ -9,6 +9,14 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), "i-plane-mutations-"));
 const fixture = JSON.parse(await readFile(join(root, "tests/fixtures/pages/heading.json"), "utf8"));
 const cases = [
+  ["wiki uses a project HTTP route", "src/commands/page-data.ts", 'placement.kind === "wiki" ? "pages/"', 'placement.kind === "wiki" ? "projects/fake/pages/"', "wiki list preserves every parent and archive in deterministic preorder"],
+  ["wiki live kind becomes project", "src/page-live.ts", 'placement.kind === "wiki" ? "workspace_page" : "project_page"', '"project_page"', "wiki live scope has workspace kind and no project identifier"],
+  ["wiki live carries a fake project", "src/page-live.ts", 'url.searchParams.set("workspaceSlug", client.config.workspace.value);', 'url.searchParams.set("projectId", "fake"); url.searchParams.set("workspaceSlug", client.config.workspace.value);', "wiki live scope has workspace kind and no project identifier"],
+  ["wiki order ignores parent", "src/commands/page-data.ts", 'append(children.get("") ?? []);', '// mutation: no root preorder', "wiki list preserves every parent and archive in deterministic preorder"],
+  ["wiki creation drops parent", "src/commands/page-content.ts", '...(parent === undefined ? {} : { parent })', '...{}', "wiki create resolves nested parent before a single POST"],
+  ["wiki deletion archives implicitly", "src/commands/page-content.ts", 'if (!wiki && !page.archived_at)', 'if (!page.archived_at)', "wiki deletion asks the server without automatic archiving"],
+  ["wiki feature gate bypassed", "src/page-transport.ts", '!runtime?.release ||', 'false && !runtime?.release ||', "wiki unsupported server refuses before page operations"],
+
   ["node preservation check bypassed", "src/page-transport.ts", "if (missing.length)", "if (false && missing.length)"],
   ["canonical review restoration removed", "src/page-html.ts", "const saved = attrs.id ? byAnchor.get(attrs.id) : undefined;", "const saved = undefined;"],
   ["canonical review omission ignored", "src/page-html.ts", "reviews.some((review) => !review.used)", "false"],
@@ -50,7 +58,7 @@ try {
   for (const name of ["src", "tests", "package.json"])
     await cp(join(root, name), join(directory, name), { recursive: true });
   await symlink(join(root, "node_modules"), join(directory, "node_modules"), "dir");
-  for (const [name, file, before, after] of cases) {
+  for (const [name, file, before, after, assertion] of cases) {
     const path = join(directory, file);
     const original = await readFile(path, "utf8");
     if (!original.includes(before)) throw new Error(`Mutation point changed: ${name}`);
@@ -59,7 +67,7 @@ try {
     try {
       execFileSync(
         "bun",
-        [
+        assertion ? ["test", "tests/wiki-commands.test.ts", "--test-name-pattern", `^${assertion}$`] : [
           "test",
           "tests/page-document.test.ts",
           "tests/page-node-readers.test.ts",
@@ -79,6 +87,10 @@ try {
     } catch (error) {
       const output = String(error.stderr ?? "") + String(error.stdout ?? "");
       detected = error.status === 1 && /\(fail\)/.test(output);
+      if (assertion) {
+        const failures = [...output.matchAll(/\(fail\) ([^\n]+)/g)].map(match => match[1].replace(/ \[.*$/, ""));
+        detected = detected && failures.length === 1 && failures[0] === assertion && !/error:.*(?:Cannot find|SyntaxError)/.test(output);
+      }
       if (!detected) throw error;
     } finally {
       await writeFile(path, original);

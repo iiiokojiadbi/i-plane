@@ -146,7 +146,7 @@ const INTAKE_FIELDS: ReadonlyArray<Option> = [
   { flag: "--priority", value: "<level>", summary: "urgent, high, medium, low or none." },
 ];
 
-export const GROUPS: ReadonlyArray<Group> = [
+const BASE_GROUPS: ReadonlyArray<Group> = [
   {
     title: "LOOK AROUND",
     commands: [
@@ -1256,6 +1256,86 @@ export const FLOW: ReadonlyArray<{ command: string; summary: string }> = [
   },
 ];
 
+const wikiExample = (text: string): string =>
+  text
+    .replace(/i-plane pages DEBUG/g, "i-plane wiki list")
+    .replace(/i-plane page (\w+) DEBUG/g, "i-plane wiki $1")
+    .replace(/\bpage (show|outline|read|stamp|create|set|insert|rm)\b/g, "wiki $1");
+const wikiGroup: Group = {
+  title: "WIKI",
+  summary:
+    "Workspace knowledge pages by API key, using the same editing commands as project pages.",
+  commands: (BASE_GROUPS.find((group) => group.title === "PAGES")?.commands ?? []).map(
+    (command): Command => {
+      const listing = command.name === "pages";
+      const creating = command.name === "page create";
+      const deleting = command.name === "page rm";
+      return {
+        ...command,
+        name: listing ? "wiki list" : command.name.replace("page ", "wiki "),
+        args: command.args?.replace(/<project>\s*/, "") ?? "",
+        maxPositionals: (command.maxPositionals ?? 1) - 1,
+        summary: listing
+          ? "List every accessible wiki page: UUID, name, parent UUID and modification date."
+          : command.summary
+              .replace(/a project's|a project|project/g, "a wiki")
+              .replace("a wiki pages", "wiki pages"),
+        options: [
+          ...(command.options ?? []),
+          ...(creating
+            ? [
+                {
+                  flag: "--parent",
+                  value: "<page>",
+                  summary:
+                    "Parent wiki page UUID, exact name or unique name prefix. Omit to create a root.",
+                },
+              ]
+            : []),
+        ],
+        examples: [
+          ...(command.examples ?? []).map(wikiExample),
+          ...(creating
+            ? ['i-plane wiki create --name "Child notes" --parent "Release notes"']
+            : []),
+        ],
+        next: (command.next ?? []).map(wikiExample),
+        notes: [
+          "Requires an API key and enabled workspace-wiki and API-key pages on the server. Uses the configured workspace or --workspace; never falls back to project routes or session sign-in.",
+          "Page names resolve by exact name or unique prefix across the complete accessible list. Ambiguity reports candidate names and UUIDs.",
+          ...(listing
+            ? [
+                "Includes archived pages, as pages does for projects. Parents precede their children; siblings follow manual sort_order, then created_at and UUID. Missing parents are displayed as roots without changing their returned parent UUID. Legacy cycles are included once in deterministic order. JSON parent is a UUID or null; text shows a dash for null.",
+              ]
+            : []),
+          ...(command.notes ?? [])
+            .filter(
+              (note) =>
+                !note.includes("archives the page first") &&
+                !note.includes("Reads page metadata") &&
+                !note.startsWith("Requires PLANE_URL"),
+            )
+            .map((note) =>
+              wikiExample(
+                note.replace(
+                  "Nested pages and --parent are unsupported by the project-page API.",
+                  "Only creation accepts --parent; moving existing pages is not supported.",
+                ),
+              ),
+            ),
+          ...(deleting
+            ? [
+                "Whole-page deletion does not archive automatically. Archive the page in Plane first. The server permits deletion only to its owner or a workspace administrator; --yes does not bypass permissions.",
+              ]
+            : []),
+        ],
+      };
+    },
+  ),
+};
+export const GROUPS: ReadonlyArray<Group> = BASE_GROUPS.flatMap((group) =>
+  group.title === "PAGES" ? [group, wikiGroup] : [group],
+);
 export const ALL_COMMANDS: ReadonlyArray<Command> = GROUPS.flatMap((group) => group.commands);
 
 export const findCommand = (name: string): Command | undefined =>

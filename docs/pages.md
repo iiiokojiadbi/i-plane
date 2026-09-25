@@ -1,8 +1,60 @@
-# Project pages
+# Project and wiki pages
 
 Read project knowledge as Markdown, then change a section without rewriting the
 rest of the document. Page metadata uses an automatically selected API-key or session endpoint; content
 changes use the collaborative live editor.
+
+## Workspace wiki
+
+Use `wiki` in place of `page`, omitting the project argument. The selected
+workspace comes from the usual configuration or `--workspace`:
+
+```bash
+i-plane wiki list
+i-plane wiki show "Release notes"
+i-plane wiki create --name "Release notes" --file release.md
+i-plane wiki create --name "Deployment" --parent "Release notes"
+i-plane wiki outline "Deployment"
+i-plane wiki stamp "Deployment"
+i-plane wiki read "Deployment" --block a1b2c3d4 --json
+i-plane wiki set "Deployment" --block a1b2c3d4 --if-match "$FINGERPRINT" --text "Updated paragraph"
+i-plane wiki insert "Deployment" --at-end --file appendix.md
+i-plane wiki rm "Deployment" --block a1b2c3d4 --yes
+```
+
+All editing flags have the same meaning as for project pages: `--if-match`,
+`--force`, `--allow-loss`, `--yes`, `--file`, `--text` and `--json`. Both placements
+share the Markdown/Yjs conversion, block editing, reader preservation checks and
+delivery semantics below. Project command syntax and behavior are unchanged.
+
+Wiki requires an API key and enabled `workspace-wiki` and `api-key-pages` modules.
+Commands check runtime support before accessing pages and refuse unsupported
+servers with exit code 1. Missing key configuration is a usage error (exit 2).
+Wiki commands do not attempt session sign-in or project routes. Live uses
+`workspace_page` without `projectId`. Reader capabilities reuse the common cache
+implementation with a separate wiki entry, so a cached project session cannot
+change the wiki identity. Runtime support is rechecked on every invocation;
+permissions are never cached. `--refresh-pages` bypasses retained capabilities,
+and `config --refresh-pages` clears both placement entries.
+
+`wiki list` includes all accessible pages, including nested and archived pages;
+project `pages` also includes archived pages. Text shows UUID, name, parent UUID
+and modification date. JSON retains the server metadata and makes `parent`
+explicit as a UUID or `null`. No parent name or invented parent is supplied.
+Parents precede children; siblings sort by native manual `sort_order`, then
+`created_at` and UUID. Missing parents appear among roots while keeping their
+returned parent UUID. Legacy cycles appear once, in deterministic order.
+
+Names resolve by exact match or unique prefix across that complete list;
+ambiguous matches report candidate names and UUIDs. `wiki create --parent`
+resolves its parent before creating the page. Omit the flag to create a root.
+Reordering and moving existing pages are outside this command set.
+
+Whole-page `wiki rm <page> --yes` sends deletion to the server **without archiving
+automatically**. Archive the page in Plane first. The server permits deletion only
+to the owner or a workspace administrator; refusals retain their explanation.
+Block deletion uses live and does not archive or delete the page itself.
+PDF export is not provided by either command family.
 
 ## Connect
 

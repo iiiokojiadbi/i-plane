@@ -40,7 +40,7 @@ import {
   knownFlags,
 } from "./registry.ts";
 
-const VERSION = "2.0.2";
+const VERSION = "2.1.0";
 
 /** Remembered so a failure can be answered with that command's own hint. */
 let current: string | undefined;
@@ -213,6 +213,7 @@ const main = async (): Promise<void> => {
     await dispatchPageCommand(
       commandName,
       new AutoPageClient(config, {
+        ...(commandName.startsWith("wiki ") ? { placement: "wiki" as const } : {}),
         refresh: flagBool(args, "refresh-pages"),
         ...(sessionDirectory ? { sessionDirectory } : {}),
       }),

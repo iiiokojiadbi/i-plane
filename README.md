@@ -25,7 +25,7 @@ comments, and `--json` whenever you need structured data. Nothing prompts for in
   and group related work in modules that can span multiple cycles.
 - **Triage requests:** collect reports in intake, then accept, reject, snooze
   or mark them as duplicates before committing to the work.
-- **Maintain project knowledge:** read pages, inspect live blocks and edit only
+- **Maintain project and wiki knowledge:** read pages, inspect live blocks and edit only
   the section you need, with fingerprints to detect concurrent changes.
 - **Automate:** use concise lists, JSON output and distinct exit codes in
   agent workflows and shell scripts.
@@ -60,6 +60,7 @@ i-plane guide                 # Command map and suggested workflow
 i-plane create --help         # Required flags and working examples
 i-plane module --help         # Commands for a feature area
 i-plane intake update --help  # Triage decisions and what to do next
+i-plane wiki --help           # Workspace pages, without a project argument
 ```
 
 Help includes usage notes, examples and **USUALLY NEXT** commands, so you can
