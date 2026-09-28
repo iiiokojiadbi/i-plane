@@ -27,6 +27,7 @@
         }
       ]
     },
-    "description_binary": "AQj7lcemBgAHAQdkZWZhdWx0AwlwYXJhZ3JhcGiH+5XHpgYAAw5pbWFnZUNvbXBvbmVudCgA+5XHpgYBA3NyYwF3H2h0dHBzOi8vZXhhbXBsZS5jb20vZGlhZ3JhbS5wbmcoAPuVx6YGAQNhbHQBdwdkaWFncmFtKAD7lcemBgEFd2lkdGgBdwMzNSUoAPuVx6YGAQZoZWlnaHQBdwRhdXRvKAD7lcemBgEJYWxpZ25tZW50AXcEbGVmdCgA+5XHpgYBBnN0YXR1cwF3B3BlbmRpbmcA"
+    "description_binary": "AQj7lcemBgAHAQdkZWZhdWx0AwlwYXJhZ3JhcGiH+5XHpgYAAw5pbWFnZUNvbXBvbmVudCgA+5XHpgYBA3NyYwF3H2h0dHBzOi8vZXhhbXBsZS5jb20vZGlhZ3JhbS5wbmcoAPuVx6YGAQNhbHQBdwdkaWFncmFtKAD7lcemBgEFd2lkdGgBdwMzNSUoAPuVx6YGAQZoZWlnaHQBdwRhdXRvKAD7lcemBgEJYWxpZ25tZW50AXcEbGVmdCgA+5XHpgYBBnN0YXR1cwF3B3BlbmRpbmcA",
+    "description_html": "<p><image-component src=\"https://example.com/diagram.png\" alt=\"diagram\"></image-component></p>"
   }
 }

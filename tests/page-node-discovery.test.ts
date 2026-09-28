@@ -1,3 +1,4 @@
+import {coreConfiguration,coreReply} from "./helpers/core-http.ts";
 import {afterEach,beforeEach,expect,test} from "bun:test";
 import {mkdtemp,readFile,rm,stat,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
@@ -14,21 +15,22 @@ const originalFetch=globalThis.fetch;
 const runtimePath="/api/extensions/configuration/", readerPath="/api/extensions/node-readers/";
 let directory:string,config:Config,calls:string[],runtime:Record<string,unknown>,inventory:unknown;
 let runtimeStatus:number,readerStatus:number;
+let runtimeEvidence:"current"|"historical",readerEvidence:"current"|"negative";
 let oldProxy:string|undefined;
 const cache=()=>new PageCapabilityCache(config.url.value,directory);
 const client=(refresh=false)=>new AutoPageClient(config,{cache:cache(),refresh});
 beforeEach(async()=>{
  directory=await mkdtemp(join(tmpdir(),"ipl-node-discovery-"));
  config={url:{value:"https://plane.test",origin:"flag"},token:{value:"reader-test-key",origin:"flag"},workspace:{value:"test",origin:"flag"},configPath:"/dev/null"};
- calls=[];runtimeStatus=200;readerStatus=200;
- runtime={release:"reader-release",coreVersion:"0.2.1",protocolVersion:1,readerFingerprint:"a".repeat(64),extensions:[{id:"api-key-pages",enabled:true}]};
- inventory={schemaVersion:1,coreVersion:"0.2.1",protocolVersion:1,release:"reader-release",fingerprint:"a".repeat(64),readers:[{id:"knowledge-review",formatVersion:1,nodeNames:["knowledgeReview"]}]};
+ calls=[];runtimeStatus=200;readerStatus=200;runtimeEvidence="current";readerEvidence="current";
+ runtime=coreConfiguration({release:"reader-release",extensions:[{id:"api-key-pages",enabled:true}]});
+ inventory={schemaVersion:1,coreVersion:"0.3.4",protocolVersion:1,release:"reader-release",fingerprint:"a".repeat(64),readers:[{id:"knowledge-review",formatVersion:1,nodeNames:["knowledgeReview"]}]};
  oldProxy=process.env.NO_PROXY;process.env.NO_PROXY="*";
  globalThis.fetch=(async(input,init)=>{
   const path=new URL(String(input)).pathname;calls.push(path);
   expect(new Headers(init?.headers).has("Cookie")).toBe(false);
-  if(path===runtimePath)return runtimeStatus===200?Response.json(runtime):new Response(null,{status:runtimeStatus});
-  if(path===readerPath)return readerStatus===200?Response.json(inventory):new Response(null,{status:readerStatus});
+  if(path===runtimePath)return runtimeStatus===200?coreReply(runtimePath,runtime,runtimeEvidence):new Response(null,{status:runtimeStatus});
+  if(path===readerPath)return readerStatus===200?coreReply(readerPath,inventory,readerEvidence):new Response(null,{status:readerStatus});
   if(path.startsWith("/live/convert-document"))return Response.json(review.response);
   return Response.json([]);
  }) as typeof fetch;
@@ -56,15 +58,15 @@ test("node readers share the transport cache, refresh flag and private credentia
 test("vanilla and older cores refuse, and installing readers invalidates a cached refusal",async()=>{
  runtimeStatus=404;const vanilla=client();await vanilla.preparePages("project");expect(await vanilla.nodeReaders()).toEqual([]);
  expect(count(readerPath)).toBe(0);
- runtimeStatus=200;readerStatus=404;runtime={release:"old",extensions:[]};
+ runtimeEvidence="historical";runtimeStatus=200;readerStatus=404;runtime={release:"old",extensions:[]};
  const old=client();await old.preparePages("project");expect(await old.nodeReaders()).toEqual([]);expect(count(readerPath)).toBe(1);
- runtime={release:"reader-release",coreVersion:"0.2.1",protocolVersion:1,readerFingerprint:"a".repeat(64),extensions:[]};readerStatus=200;
+ runtimeEvidence="current";runtime=coreConfiguration({release:"reader-release"});readerStatus=200;
  const upgraded=client();await upgraded.preparePages("project");expect(await upgraded.nodeReaders()).toEqual(["knowledgeReview"]);expect(count(readerPath)).toBe(2);
 });
 
 test("a rollback never reuses a previous positive reader claim",async()=>{
  const first=client();await first.preparePages("project");await first.nodeReaders();
- runtime={release:"previous",coreVersion:"0.2.0",protocolVersion:1,extensions:[]};readerStatus=404;
+ runtimeEvidence="historical";runtime={release:"previous",coreVersion:"0.2.0",protocolVersion:1,extensions:[]};readerStatus=404;
  const rolledBack=client();await rolledBack.preparePages("project");expect(await rolledBack.nodeReaders()).toEqual([]);
  expect(count(readerPath)).toBe(2);
 });
@@ -88,6 +90,7 @@ for(const status of [401,403,429,500,503]) for(const endpoint of ["runtime","rea
 });
 
 test("malformed, mixed-release and duplicate reader inventories fail without caching absence",async()=>{
+ readerEvidence="negative";
  const good=inventory as Record<string,unknown>;
  for(const broken of [null,{}, {...good,schemaVersion:2},{...good,release:"other"},{...good,fingerprint:"b".repeat(64)},
   {...good,readers:[{id:"review",formatVersion:1,nodeNames:["knowledgeReview","knowledgeReview"]}]},

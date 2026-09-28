@@ -19,6 +19,7 @@
         }
       ]
     },
-    "description_binary": "AQPXpsWJBAAHAQdkZWZhdWx0Awljb2RlQmxvY2sHANemxYkEAAYEANemxYkEAQ9wcmludCgiaGVsbG8iKQoA"
+    "description_binary": "AQPXpsWJBAAHAQdkZWZhdWx0Awljb2RlQmxvY2sHANemxYkEAAYEANemxYkEAQ9wcmludCgiaGVsbG8iKQoA",
+    "description_html": "<pre><code class=\"language-python\">print(&quot;hello&quot;)\n</code></pre>"
   }
 }

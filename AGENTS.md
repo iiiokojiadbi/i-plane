@@ -200,3 +200,18 @@ Keep `scripts/page-mutations.mjs` able to detect broken transformations. Saved H
 reads (`page show`) share the semantic review/loss contract with live block reads.
 Keep page-specific conversion separate from work-item/comment Markdown conversion;
 exercise the actual `page show` output in whole-page write regression checks.
+
+## Core capability ownership
+
+Every capability supplied by for-plane is proved in for-plane using independent
+core probes. Products test their own policy and user workflows; they do not own
+proofs of core guarantees. Add each new capability to `checks/core-surface.json`
+and its independent probe to `checks/registry.json` in for-plane; follow
+`for-plane/docs/core-contracts.md` for drift and compatibility review.
+Product imports of the SDK and `plane.for_plane` may use only positions marked
+public in the core surface inventory. Internal imports fail the core gate.
+
+CLI response fixtures stay self-contained: keep a versioned copy of the accepted
+core HTTP shapes in i-plane. Its tests validate current positive responses;
+historical and intentionally invalid responses carry explicit evidence labels.
+The common for-plane acceptance run verifies that copy against the core contract.

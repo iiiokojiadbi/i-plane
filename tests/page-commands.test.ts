@@ -1,3 +1,4 @@
+import {coreConfiguration} from "./helpers/core-http.ts";
 import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -73,7 +74,7 @@ test("failed content creation reports the created UUID without repeating POST", 
     listAll: async () => [{ id: "project", identifier: "APP", name: "Project" }],
     request: async (path: string) => {
       if (path === "/live/convert-document") return heading.response;
-      if (path === "/api/extensions/configuration/") return { release: "test-release" };
+      if (path === "/api/extensions/configuration/") return coreConfiguration({ release: "test-release" });
       posts++;
       return { id: "created-page-id", name: "Page" };
     },
@@ -162,7 +163,7 @@ test("every page handler executes: JSON, file input, anchor edits, metadata CRUD
     config: { url: { value: stub.url }, workspace: { value: "workspace" }, token: { value: "page-api-secret" } },
     listAll: async (path: string) => (path === "projects/" ? [project] : [page]),
     request: async (path: string, options: { method?: string; body?: unknown } = {}) => {
-      if (path === "/api/extensions/configuration/") return { release: "test-release" };
+      if (path === "/api/extensions/configuration/") return coreConfiguration({ release: "test-release" });
       if (path === "/live/convert-document") {
         const html = (options.body as { description_html: string }).description_html;
         return html === heading.html ? heading.response : replacement.response;

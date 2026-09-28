@@ -40,6 +40,7 @@
         }
       ]
     },
-    "description_binary": "AQeFgK2XAwAHAQdkZWZhdWx0Awh0YXNrTGlzdAcAhYCtlwMAAwh0YXNrSXRlbQcAhYCtlwMBAwlwYXJhZ3JhcGgoAIWArZcDAQdjaGVja2VkAXiHhYCtlwMBAwh0YXNrSXRlbQcAhYCtlwMEAwlwYXJhZ3JhcGgoAIWArZcDBAdjaGVja2VkAXkA"
+    "description_binary": "AQeFgK2XAwAHAQdkZWZhdWx0Awh0YXNrTGlzdAcAhYCtlwMAAwh0YXNrSXRlbQcAhYCtlwMBAwlwYXJhZ3JhcGgoAIWArZcDAQdjaGVja2VkAXiHhYCtlwMBAwh0YXNrSXRlbQcAhYCtlwMEAwlwYXJhZ3JhcGgoAIWArZcDBAdjaGVja2VkAXkA",
+    "description_html": "<ul data-type=\"taskList\">\n<li data-type=\"taskItem\" data-checked=\"true\"></li>\n<li data-type=\"taskItem\" data-checked=\"false\"></li>\n</ul>"
   }
 }

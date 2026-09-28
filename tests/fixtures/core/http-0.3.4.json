@@ -1,0 +1,835 @@
+{
+  "schemaVersion": 1,
+  "coreVersion": "0.3.4",
+  "protocolVersion": 1,
+  "routes": {
+    "GET /api/extensions/configuration/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "adapterApi": {
+            "kind": "integer"
+          },
+          "coreVersion": {
+            "kind": "string"
+          },
+          "protocolVersion": {
+            "kind": "integer"
+          },
+          "nativeBridge": {
+            "variants": [
+              {
+                "kind": "object",
+                "properties": {
+                  "bridgeVersion": {
+                    "const": 1
+                  },
+                  "fingerprint": {
+                    "kind": "string"
+                  }
+                },
+                "required": ["bridgeVersion", "fingerprint"],
+                "additional": false
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "readerFingerprint": {
+            "variants": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "planeVersion": {
+            "kind": "string"
+          },
+          "release": {
+            "variants": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "extensions": {
+            "kind": "array",
+            "items": {
+              "kind": "object",
+              "properties": {
+                "id": {
+                  "kind": "string"
+                },
+                "source": {
+                  "kind": "string"
+                },
+                "enabled": {
+                  "kind": "boolean"
+                },
+                "documentKinds": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "string"
+                  }
+                },
+                "integrationKeys": {
+                  "kind": "object",
+                  "values": {
+                    "kind": "array",
+                    "items": {
+                      "kind": "string"
+                    }
+                  }
+                },
+                "coreReaders": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "string"
+                  }
+                },
+                "navigation": {
+                  "kind": "object",
+                  "properties": {
+                    "project": {
+                      "kind": "object",
+                      "properties": {
+                        "key": {
+                          "kind": "string"
+                        },
+                        "href": {
+                          "kind": "string"
+                        },
+                        "icon": {
+                          "kind": "string"
+                        },
+                        "access": {
+                          "kind": "array",
+                          "items": {
+                            "kind": "integer"
+                          }
+                        },
+                        "sortOrder": {
+                          "kind": "integer"
+                        },
+                        "labels": {
+                          "kind": "object",
+                          "values": {
+                            "kind": "string"
+                          }
+                        },
+                        "descriptions": {
+                          "kind": "object",
+                          "values": {
+                            "kind": "string"
+                          }
+                        },
+                        "defaultEnabled": {
+                          "kind": "boolean"
+                        },
+                        "route": {
+                          "kind": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "href",
+                        "icon",
+                        "access",
+                        "sortOrder",
+                        "labels",
+                        "descriptions",
+                        "defaultEnabled"
+                      ],
+                      "additional": false
+                    },
+                    "workspace": {
+                      "kind": "object",
+                      "properties": {
+                        "key": {
+                          "kind": "string"
+                        },
+                        "href": {
+                          "kind": "string"
+                        },
+                        "icon": {
+                          "kind": "string"
+                        },
+                        "access": {
+                          "kind": "array",
+                          "items": {
+                            "kind": "integer"
+                          }
+                        },
+                        "sortOrder": {
+                          "kind": "integer"
+                        },
+                        "labels": {
+                          "kind": "object",
+                          "values": {
+                            "kind": "string"
+                          }
+                        },
+                        "descriptions": {
+                          "kind": "object",
+                          "values": {
+                            "kind": "string"
+                          }
+                        },
+                        "defaultEnabled": {
+                          "kind": "boolean"
+                        },
+                        "route": {
+                          "kind": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "href",
+                        "icon",
+                        "access",
+                        "sortOrder",
+                        "labels",
+                        "descriptions",
+                        "defaultEnabled"
+                      ],
+                      "additional": false
+                    }
+                  },
+                  "required": [],
+                  "additional": false
+                },
+                "web": {
+                  "kind": "object",
+                  "properties": {
+                    "url": {
+                      "kind": "string"
+                    },
+                    "sha256": {
+                      "kind": "string"
+                    }
+                  },
+                  "required": ["url", "sha256"],
+                  "additional": false
+                },
+                "editor": {
+                  "kind": "object",
+                  "properties": {
+                    "url": {
+                      "kind": "string"
+                    },
+                    "sha256": {
+                      "kind": "string"
+                    }
+                  },
+                  "required": ["url", "sha256"],
+                  "additional": false
+                },
+                "styles": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "object",
+                    "properties": {
+                      "url": {
+                        "kind": "string"
+                      },
+                      "sha256": {
+                        "kind": "string"
+                      }
+                    },
+                    "required": ["url", "sha256"],
+                    "additional": false
+                  }
+                }
+              },
+              "required": ["id", "source", "enabled", "styles"],
+              "additional": false
+            }
+          }
+        },
+        "required": [
+          "adapterApi",
+          "coreVersion",
+          "protocolVersion",
+          "nativeBridge",
+          "readerFingerprint",
+          "planeVersion",
+          "release",
+          "extensions"
+        ],
+        "additional": false
+      },
+      "cacheControl": "no-store"
+    },
+    "GET /api/extensions/node-readers/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "coreVersion": {
+            "kind": "string"
+          },
+          "protocolVersion": {
+            "kind": "integer"
+          },
+          "release": {
+            "variants": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "fingerprint": {
+            "kind": "string"
+          },
+          "readers": {
+            "kind": "array",
+            "items": {
+              "kind": "object",
+              "properties": {
+                "id": {
+                  "kind": "string"
+                },
+                "formatVersion": {
+                  "kind": "integer"
+                },
+                "nodeNames": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "string"
+                  }
+                }
+              },
+              "required": ["id", "formatVersion", "nodeNames"],
+              "additional": false
+            }
+          }
+        },
+        "required": ["schemaVersion", "coreVersion", "protocolVersion", "release", "fingerprint", "readers"],
+        "additional": false
+      },
+      "unavailable": {
+        "status": 503,
+        "body": {
+          "kind": "object",
+          "properties": {
+            "error": {
+              "kind": "string"
+            }
+          },
+          "required": ["error"],
+          "additional": false
+        }
+      },
+      "cacheControl": "no-store"
+    },
+    "GET /api/extensions/integration-points/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "apiVersion": {
+            "const": 1
+          },
+          "coreVersion": {
+            "kind": "string"
+          },
+          "protocolVersion": {
+            "kind": "integer"
+          },
+          "release": {
+            "variants": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "keys": {
+            "kind": "array",
+            "items": {
+              "kind": "object",
+              "properties": {
+                "point": {
+                  "kind": "string"
+                },
+                "key": {
+                  "kind": "string"
+                },
+                "source": {
+                  "kind": "string"
+                },
+                "extension": {
+                  "kind": "string"
+                },
+                "enabled": {
+                  "kind": "boolean"
+                },
+                "backendRegistered": {
+                  "variants": [
+                    {
+                      "kind": "boolean"
+                    },
+                    {
+                      "kind": "null"
+                    }
+                  ]
+                }
+              },
+              "required": ["point", "key", "source", "extension", "enabled", "backendRegistered"],
+              "additional": false
+            }
+          }
+        },
+        "required": ["apiVersion", "coreVersion", "protocolVersion", "release", "keys"],
+        "additional": false
+      },
+      "cacheControl": "no-store"
+    },
+    "GET /api/extensions/workspaces/<slug>/document-context/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "user": {
+            "kind": "object",
+            "properties": {
+              "id": {
+                "kind": "string"
+              },
+              "name": {
+                "kind": "string"
+              }
+            },
+            "required": ["id", "name"],
+            "additional": false
+          },
+          "workspaceId": {
+            "kind": "string"
+          },
+          "role": {
+            "kind": "integer"
+          }
+        },
+        "required": ["user", "workspaceId", "role"],
+        "additional": false
+      },
+      "authorization": "service credential and active workspace identity"
+    },
+    "GET /api/extensions/workspaces/<slug>/page-references/<uuid>/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "status": {
+            "const": "available"
+          },
+          "pageId": {
+            "kind": "string"
+          },
+          "workspaceSlug": {
+            "kind": "string"
+          },
+          "documentKind": {
+            "enum": ["project_page", "workspace_page"]
+          },
+          "projectId": {
+            "variants": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "href": {
+            "kind": "string"
+          },
+          "label": {
+            "kind": "string"
+          },
+          "ownerId": {
+            "kind": "string"
+          },
+          "projectIdentifier": {
+            "variants": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "logoProps": {
+            "variants": [
+              {
+                "kind": "object",
+                "additional": true
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "pageId",
+          "workspaceSlug",
+          "documentKind",
+          "projectId",
+          "href",
+          "label",
+          "ownerId",
+          "projectIdentifier",
+          "logoProps"
+        ],
+        "additional": false
+      },
+      "deniedStatus": 404,
+      "cacheControl": "no-store"
+    },
+    "POST /api/extensions/workspaces/<slug>/entity-references/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "references": {
+            "kind": "array",
+            "items": {
+              "variants": [
+                {
+                  "kind": "object",
+                  "properties": {
+                    "status": {
+                      "const": "available"
+                    },
+                    "entityKind": {
+                      "enum": ["page", "issue", "project", "cycle", "module"]
+                    },
+                    "entityId": {
+                      "kind": "string"
+                    },
+                    "workspaceSlug": {
+                      "kind": "string"
+                    },
+                    "label": {
+                      "kind": "string"
+                    },
+                    "href": {
+                      "kind": "string"
+                    },
+                    "exportHref": {
+                      "kind": "string"
+                    },
+                    "activation": {
+                      "kind": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "issue-peek"
+                        },
+                        "projectId": {
+                          "kind": "string"
+                        }
+                      },
+                      "required": ["kind", "projectId"],
+                      "additional": false
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "entityKind",
+                    "entityId",
+                    "workspaceSlug",
+                    "label",
+                    "href",
+                    "exportHref"
+                  ],
+                  "additional": false
+                },
+                {
+                  "kind": "object",
+                  "properties": {
+                    "status": {
+                      "const": "unavailable"
+                    }
+                  },
+                  "required": ["status"],
+                  "additional": false
+                }
+              ]
+            }
+          },
+          "unavailableLabel": {
+            "kind": "string"
+          }
+        },
+        "required": ["references", "unavailableLabel"],
+        "additional": false
+      },
+      "authorization": "active workspace identity"
+    },
+    "GET /api/extensions/workspaces/<slug>/entity-references/<kind>/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "references": {
+            "kind": "array",
+            "items": {
+              "kind": "object",
+              "properties": {
+                "status": {
+                  "const": "available"
+                },
+                "entityKind": {
+                  "enum": ["page", "issue", "project", "cycle", "module"]
+                },
+                "entityId": {
+                  "kind": "string"
+                },
+                "workspaceSlug": {
+                  "kind": "string"
+                },
+                "label": {
+                  "kind": "string"
+                },
+                "href": {
+                  "kind": "string"
+                },
+                "exportHref": {
+                  "kind": "string"
+                },
+                "activation": {
+                  "kind": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "issue-peek"
+                    },
+                    "projectId": {
+                      "kind": "string"
+                    }
+                  },
+                  "required": ["kind", "projectId"],
+                  "additional": false
+                }
+              },
+              "required": [
+                "status",
+                "entityKind",
+                "entityId",
+                "workspaceSlug",
+                "label",
+                "href",
+                "exportHref"
+              ],
+              "additional": false
+            }
+          }
+        },
+        "required": ["references"],
+        "additional": false
+      },
+      "authorization": "active workspace identity"
+    },
+    "GET /api/extensions/workspaces/<slug>/projects/<uuid>/sections/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "sections": {
+            "kind": "object",
+            "values": {
+              "kind": "boolean"
+            }
+          }
+        },
+        "required": ["sections"],
+        "additional": false
+      },
+      "authorization": "native project section permissions"
+    },
+    "PATCH /api/extensions/workspaces/<slug>/projects/<uuid>/sections/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "sections": {
+            "kind": "object",
+            "values": {
+              "kind": "boolean"
+            }
+          }
+        },
+        "required": ["sections"],
+        "additional": false
+      },
+      "authorization": "native project section permissions"
+    },
+    "GET /api/extensions/workspaces/<slug>/sections/<extension>/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "allowed": {
+            "const": true
+          }
+        },
+        "required": ["allowed"],
+        "additional": false
+      },
+      "authorization": "active membership and enabled section"
+    },
+    "GET /api/extensions/workspaces/<slug>/projects/<uuid>/sections/<extension>/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "allowed": {
+            "const": true
+          }
+        },
+        "required": ["allowed"],
+        "additional": false
+      },
+      "authorization": "active membership and enabled section"
+    },
+    "GET /live/node-readers/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "coreVersion": {
+            "kind": "string"
+          },
+          "protocolVersion": {
+            "kind": "integer"
+          },
+          "release": {
+            "variants": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "null"
+              }
+            ]
+          },
+          "fingerprint": {
+            "kind": "string"
+          },
+          "readers": {
+            "kind": "array",
+            "items": {
+              "kind": "object",
+              "properties": {
+                "id": {
+                  "kind": "string"
+                },
+                "formatVersion": {
+                  "kind": "integer"
+                },
+                "nodeNames": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "string"
+                  }
+                }
+              },
+              "required": ["id", "formatVersion", "nodeNames"],
+              "additional": false
+            }
+          }
+        },
+        "required": ["schemaVersion", "coreVersion", "protocolVersion", "release", "fingerprint", "readers"],
+        "additional": false
+      },
+      "unavailable": {
+        "status": 503,
+        "body": {
+          "kind": "object",
+          "properties": {
+            "error": {
+              "kind": "string"
+            }
+          },
+          "required": ["error"],
+          "additional": false
+        }
+      },
+      "cacheControl": "no-store"
+    },
+    "POST /live/convert-document/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "description_html": {
+            "kind": "string"
+          },
+          "description_json": {
+            "kind": "object",
+            "additional": true
+          },
+          "description_binary": {
+            "kind": "string"
+          }
+        },
+        "required": ["description_html", "description_json", "description_binary"],
+        "additional": false
+      },
+      "errors": {
+        "400": {
+          "kind": "object",
+          "properties": {
+            "message": {
+              "const": "Validation error"
+            },
+            "context": {
+              "kind": "object",
+              "properties": {
+                "validationErrors": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "object",
+                    "properties": {
+                      "path": {
+                        "kind": "string"
+                      },
+                      "message": {
+                        "kind": "string"
+                      }
+                    },
+                    "required": ["path", "message"],
+                    "additional": false
+                  }
+                }
+              },
+              "required": ["validationErrors"],
+              "additional": false
+            }
+          },
+          "required": ["message", "context"],
+          "additional": false
+        },
+        "500": {
+          "kind": "object",
+          "properties": {
+            "message": {
+              "const": "Internal server error."
+            }
+          },
+          "required": ["message"],
+          "additional": false
+        }
+      }
+    }
+  }
+}

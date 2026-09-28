@@ -64,6 +64,7 @@
         }
       ]
     },
-    "description_binary": "AQ782eSuBgAHAQdkZWZhdWx0Awh0YXNrTGlzdAcA/NnkrgYAAwh0YXNrSXRlbQcA/NnkrgYBAwlwYXJhZ3JhcGgHAPzZ5K4GAgYEAPzZ5K4GAwVmaXJzdIf82eSuBgIDCXBhcmFncmFwaAcA/NnkrgYJBgQA/NnkrgYKEHNlY29uZCBwYXJhZ3JhcGgoAPzZ5K4GAQdjaGVja2VkAXiH/NnkrgYBAwh0YXNrSXRlbQcA/NnkrgYcAwlwYXJhZ3JhcGgHAPzZ5K4GHQYEAPzZ5K4GHgV0aGlyZCgA/NnkrgYcB2NoZWNrZWQBeQA="
+    "description_binary": "AQ782eSuBgAHAQdkZWZhdWx0Awh0YXNrTGlzdAcA/NnkrgYAAwh0YXNrSXRlbQcA/NnkrgYBAwlwYXJhZ3JhcGgHAPzZ5K4GAgYEAPzZ5K4GAwVmaXJzdIf82eSuBgIDCXBhcmFncmFwaAcA/NnkrgYJBgQA/NnkrgYKEHNlY29uZCBwYXJhZ3JhcGgoAPzZ5K4GAQdjaGVja2VkAXiH/NnkrgYBAwh0YXNrSXRlbQcA/NnkrgYcAwlwYXJhZ3JhcGgHAPzZ5K4GHQYEAPzZ5K4GHgV0aGlyZCgA/NnkrgYcB2NoZWNrZWQBeQA=",
+    "description_html": "<ul data-type=\"taskList\">\n<li data-type=\"taskItem\" data-checked=\"true\">first\n<p>second paragraph</p>\n</li>\n<li data-type=\"taskItem\" data-checked=\"false\">third\n</li>\n</ul>"
   }
 }
