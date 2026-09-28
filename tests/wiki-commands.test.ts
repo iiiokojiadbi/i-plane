@@ -1,3 +1,4 @@
+import { coreConfiguration, coreReply, coreBody } from "./helpers/core-http.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -19,6 +20,7 @@ const keys = ["NO_PROXY", "PLANE_PAGE_CACHE", "PLANE_LOGIN", "PLANE_PASSWORD"];
 const rootId = "10000000-0000-4000-8000-000000000001", childId = "10000000-0000-4000-8000-000000000002";
 let previous: Record<string, string | undefined>, directory: string, printed: string, config: any;
 let calls: {path: string; method: string; body: any; headers: Headers}[];
+let runtimeEvidence: "current" | "negative" = "current";
 let rows: any[], runtime: any, runtimeStatus: number, listStatus: number, detailStatus: number, deleteStatus: number;
 beforeEach(async () => {
   previous = Object.fromEntries(keys.map(k => [k, process.env[k]]));
@@ -28,14 +30,15 @@ beforeEach(async () => {
   printed = ""; calls = []; runtimeStatus = listStatus = detailStatus = deleteStatus = 200;
   config = {url: {value:"http://127.0.0.1:9999",origin:"flag"}, token:{value:"wiki-key-secret",origin:"flag"}, workspace:{value:"workspace",origin:"flag"}, configPath:"/dev/null"};
   rows = [{id:childId,name:"Child",parent:rootId,sort_order:1,created_at:"2026-01-01",archived_at:"2026-01-02"},{id:rootId,name:"Root",parent:null,sort_order:20,created_at:"2026-01-01"}];
-  runtime = {release:"wiki-test", extensions:[{id:"api-key-pages",enabled:true},{id:"workspace-wiki",enabled:true}]};
+  runtimeEvidence = "current";
+  runtime = coreConfiguration({release:"wiki-test", extensions:[{id:"api-key-pages",enabled:true},{id:"workspace-wiki",enabled:true}]});
   process.stdout.write = ((chunk: string) => {printed += chunk; return true;}) as typeof originalWrite;
   globalThis.fetch = (async (input, init) => {
     const path = new URL(String(input)).pathname, method=init?.method ?? "GET", body=init?.body ? JSON.parse(String(init.body)):undefined;
     calls.push({path,method,body,headers:new Headers(init?.headers)});
-    if (path === "/api/extensions/configuration/") return runtimeStatus===200 ? Response.json(runtime) : new Response(null,{status:runtimeStatus});
+    if (path === "/api/extensions/configuration/") return runtimeStatus===200 ? coreReply(path, runtime, runtimeEvidence) : new Response(null,{status:runtimeStatus});
     if (path === "/api/extensions/node-readers/") return new Response(null,{status:404});
-    if (path === "/live/convert-document") return Response.json(body.description_html===heading.html ? heading.response : replacement.response);
+    if (path === "/live/convert-document") return Response.json(coreBody("POST /live/convert-document/", body.description_html===heading.html ? heading.response : replacement.response));
     if (path === "/api/v1/workspaces/workspace/pages/") {
       if (method === "POST") return Response.json({id:rootId,...body});
       return listStatus===200 ? Response.json(rows) : new Response(null,{status:listStatus});
@@ -102,7 +105,7 @@ for(const status of [401,403,404,429,500]) test(`wiki HTTP ${status} never selec
 test("wiki unsupported server refuses before page operations", async () => {
   for(const mode of ["absent","disabled","no-key-pages","no-release"]){
     calls=[];runtimeStatus=mode==="absent"?404:200;
-    runtime={release:mode==="no-release"?null:"r",extensions:[{id:"workspace-wiki",enabled:mode!=="disabled"},{id:"api-key-pages",enabled:mode!=="no-key-pages"}]};
+    runtime=coreConfiguration({release:mode==="no-release"?null:"r",extensions:[{id:"workspace-wiki",enabled:mode!=="disabled"},{id:"api-key-pages",enabled:mode!=="no-key-pages"}]});
     await expect(run("create","--name","New")).rejects.toThrow("not supported");
     expect(calls.map(c=>c.path)).toEqual(["/api/extensions/configuration/"]);
   }
@@ -169,7 +172,7 @@ test("wiki capability authorization and invalid inventory remain failures", asyn
   for(const status of [401,403,500]){
     runtimeStatus=status;const e=await run("list").catch(e=>e);expect(e.status).toBe(status);
   }
-  runtimeStatus=200;runtime={extensions:"invalid"};
+  runtimeStatus=200;runtimeEvidence="negative";runtime={extensions:"invalid"};
   await expect(run("list")).rejects.toThrow("Invalid extension configuration");
   expect(calls.every(c=>c.path==="/api/extensions/configuration/")).toBe(true);
 });

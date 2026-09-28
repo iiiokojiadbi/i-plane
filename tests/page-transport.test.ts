@@ -1,3 +1,4 @@
+import {coreConfiguration,coreReply,invalidCoreReply} from "./helpers/core-http.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -31,7 +32,7 @@ beforeEach(async () => {
   globalThis.fetch = (async (input, init) => {
     const path = new URL(String(input)).pathname;
     calls.push({ path, headers: new Headers(init?.headers), method: init?.method ?? "GET" });
-    if (path === runtimePath) return runtime ? Response.json({ release: "runtime-1", extensions: [{ id: "api-key-pages", enabled: runtime === true }] }) : new Response(null, { status: 404 });
+    if (path === runtimePath) return runtime ? coreReply(runtimePath, coreConfiguration({ release: "runtime-1", extensions: [{ id: "api-key-pages", enabled: runtime === true }] })) : new Response(null, { status: 404 });
     if (path === publicList && publicStatus !== 200) return new Response(null, { status: publicStatus });
     if (path === "/auth/get-csrf-token/") return Response.json({ csrf_token: "csrf-secret" }, { headers: { "Set-Cookie": "csrftoken=csrf-secret; Path=/" } });
     if (path === "/auth/sign-in/") { logins++; return new Response(null, { status: 302, headers: { "Set-Cookie": `session-id=session-secret-${logins}; Path=/` } }); }
@@ -131,7 +132,7 @@ test("API removal switches only a list read, never replays a mutation", async ()
 test("invalid runtime configuration prevents speculative fallback", async () => {
   credentials(); publicStatus = 404;
   const fetcher = globalThis.fetch;
-  globalThis.fetch = (async (url, init) => String(url).endsWith(runtimePath) ? Response.json({ release: "bad" }) : fetcher(url, init)) as typeof fetch;
+  globalThis.fetch = (async (url, init) => String(url).endsWith(runtimePath) ? invalidCoreReply({ release: "bad" }) : fetcher(url, init)) as typeof fetch;
   await expect(client().listAll(list)).rejects.toThrow("Invalid extension configuration");
   expect(logins).toBe(0); expect(await cache().read()).toBeUndefined();
 });
@@ -239,7 +240,7 @@ test("adapter with no installed package keeps stock session live available", asy
   credentials(); publicStatus = 404;
   const stub = await server(); config.url.value = stub.url;
   const fetcher = globalThis.fetch;
-  globalThis.fetch = (async (url, init) => String(url).endsWith(runtimePath) ? Response.json({ release: null, extensions: [] }) : fetcher(url, init)) as typeof fetch;
+  globalThis.fetch = (async (url, init) => String(url).endsWith(runtimePath) ? coreReply(runtimePath, coreConfiguration({ release: null, extensions: [] })) : fetcher(url, init)) as typeof fetch;
   const selected = client();
   const live = await openLive(selected, "project", "page"); live.destroy();
   expect((await cache().read())?.mode).toBe("session");

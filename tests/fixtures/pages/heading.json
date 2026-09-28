@@ -58,6 +58,7 @@
         }
       ]
     },
-    "description_binary": "AQ/eyKD1DQAHAQdkZWZhdWx0AwdoZWFkaW5nBwDeyKD1DQAGBADeyKD1DQEHSGVhZGluZygA3sig9Q0ABWxldmVsAX0Bh97IoPUNAAMJcGFyYWdyYXBoBwDeyKD1DQoGBADeyKD1DQsPUGFyYWdyYXBoIHdpdGgght7IoPUNGgRib2xkAnt9hN7IoPUNGwRib2xkht7IoPUNHwRib2xkBG51bGyE3sig9Q0gBSBhbmQght7IoPUNJQZpdGFsaWMCe32E3sig9Q0mBml0YWxpY4beyKD1DSwGaXRhbGljBG51bGyE3sig9Q0tAS4A"
+    "description_binary": "AQ/eyKD1DQAHAQdkZWZhdWx0AwdoZWFkaW5nBwDeyKD1DQAGBADeyKD1DQEHSGVhZGluZygA3sig9Q0ABWxldmVsAX0Bh97IoPUNAAMJcGFyYWdyYXBoBwDeyKD1DQoGBADeyKD1DQsPUGFyYWdyYXBoIHdpdGgght7IoPUNGgRib2xkAnt9hN7IoPUNGwRib2xkht7IoPUNHwRib2xkBG51bGyE3sig9Q0gBSBhbmQght7IoPUNJQZpdGFsaWMCe32E3sig9Q0mBml0YWxpY4beyKD1DSwGaXRhbGljBG51bGyE3sig9Q0tAS4A",
+    "description_html": "<h1>Heading</h1>\n<p>Paragraph with <strong>bold</strong> and <em>italic</em>.</p>"
   }
 }

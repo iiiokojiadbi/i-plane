@@ -1,3 +1,4 @@
+import {coreConfiguration} from "./helpers/core-http.ts";
 import { afterEach, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { PlaneClient } from "../src/client.ts";
@@ -48,7 +49,7 @@ test("page HTTP mutations use only the API key and never retry a rejected write"
 test("live negotiates the release and sends key identity with explicit write intent", async () => {
   process.env.NO_PROXY = "*";
   const stub = await server();
-  globalThis.fetch = (async () => Response.json({ release: "runtime-1" })) as typeof fetch;
+  globalThis.fetch = (async () => Response.json(coreConfiguration({ release: "runtime-1" }))) as typeof fetch;
   const client = new PlaneClient(config(stub.url));
   for (const writable of [false, true]) {
     const live = await openLive(client, "project", "page", { writable });
@@ -64,7 +65,7 @@ test("live negotiates the release and sends key identity with explicit write int
 test("live rejection opens exactly one connection without login fallback", async () => {
   process.env.NO_PROXY = "*";
   const stub = await server("denied");
-  globalThis.fetch = (async () => Response.json({ release: "runtime-1" })) as typeof fetch;
+  globalThis.fetch = (async () => Response.json(coreConfiguration({ release: "runtime-1" }))) as typeof fetch;
   await expect(openLive(new PlaneClient(config(stub.url)), "project", "page")).rejects.toThrow("Live authentication was refused");
   expect(stub.connections()).toBe(1);
 });

@@ -31,6 +31,7 @@
         }
       ]
     },
-    "description_binary": "AQb/zrDCBQAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgHAP/OsMIFAAYEAP/OsMIFARFGaXJzdCByZXBsYWNlbWVudIf/zrDCBQADCXBhcmFncmFwaAcA/86wwgUTBgQA/86wwgUUElNlY29uZCByZXBsYWNlbWVudAA="
+    "description_binary": "AQb/zrDCBQAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgHAP/OsMIFAAYEAP/OsMIFARFGaXJzdCByZXBsYWNlbWVudIf/zrDCBQADCXBhcmFncmFwaAcA/86wwgUTBgQA/86wwgUUElNlY29uZCByZXBsYWNlbWVudAA=",
+    "description_html": "<p>First replacement</p>\n<p>Second replacement</p>"
   }
 }
