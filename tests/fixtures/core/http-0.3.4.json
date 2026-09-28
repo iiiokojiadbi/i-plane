@@ -314,9 +314,20 @@
               "required": ["id", "formatVersion", "nodeNames"],
               "additional": false
             }
+          },
+          "readerApi": {
+            "const": 1
           }
         },
-        "required": ["schemaVersion", "coreVersion", "protocolVersion", "release", "fingerprint", "readers"],
+        "required": [
+          "schemaVersion",
+          "coreVersion",
+          "protocolVersion",
+          "release",
+          "fingerprint",
+          "readers",
+          "readerApi"
+        ],
         "additional": false
       },
       "unavailable": {
@@ -747,9 +758,20 @@
               "required": ["id", "formatVersion", "nodeNames"],
               "additional": false
             }
+          },
+          "readerApi": {
+            "const": 1
           }
         },
-        "required": ["schemaVersion", "coreVersion", "protocolVersion", "release", "fingerprint", "readers"],
+        "required": [
+          "schemaVersion",
+          "coreVersion",
+          "protocolVersion",
+          "release",
+          "fingerprint",
+          "readers",
+          "readerApi"
+        ],
         "additional": false
       },
       "unavailable": {
@@ -831,5 +853,6 @@
         }
       }
     }
-  }
+  },
+  "readerApi": 1
 }

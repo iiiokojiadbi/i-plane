@@ -15,7 +15,7 @@ const originalFetch=globalThis.fetch;
 const runtimePath="/api/extensions/configuration/", readerPath="/api/extensions/node-readers/";
 let directory:string,config:Config,calls:string[],runtime:Record<string,unknown>,inventory:unknown;
 let runtimeStatus:number,readerStatus:number;
-let runtimeEvidence:"current"|"historical",readerEvidence:"current"|"negative";
+let runtimeEvidence:"current"|"historical",readerEvidence:"current"|"historical"|"negative";
 let oldProxy:string|undefined;
 const cache=()=>new PageCapabilityCache(config.url.value,directory);
 const client=(refresh=false)=>new AutoPageClient(config,{cache:cache(),refresh});
@@ -24,7 +24,7 @@ beforeEach(async()=>{
  config={url:{value:"https://plane.test",origin:"flag"},token:{value:"reader-test-key",origin:"flag"},workspace:{value:"test",origin:"flag"},configPath:"/dev/null"};
  calls=[];runtimeStatus=200;readerStatus=200;runtimeEvidence="current";readerEvidence="current";
  runtime=coreConfiguration({release:"reader-release",extensions:[{id:"api-key-pages",enabled:true}]});
- inventory={schemaVersion:1,coreVersion:"0.3.4",protocolVersion:1,release:"reader-release",fingerprint:"a".repeat(64),readers:[{id:"knowledge-review",formatVersion:1,nodeNames:["knowledgeReview"]}]};
+ inventory={schemaVersion:1,readerApi:1,coreVersion:"0.3.4",protocolVersion:1,release:"reader-release",fingerprint:"a".repeat(64),readers:[{id:"knowledge-review",formatVersion:1,nodeNames:["knowledgeReview"]}]};
  oldProxy=process.env.NO_PROXY;process.env.NO_PROXY="*";
  globalThis.fetch=(async(input,init)=>{
   const path=new URL(String(input)).pathname;calls.push(path);
@@ -121,4 +121,38 @@ test("a misreported converter cannot lose confirmed review nodes or attributes",
   await expect(prepareMarkdown(client(),markdown)).rejects.toThrow("did not preserve the confirmed knowledgeReview");
   globalThis.fetch=fetch;
  }
+});
+
+for (const [label, protocol, readerApi, evidence] of [
+ ["legacy core", 1, undefined, "historical"],
+ ["product protocol 2", 2, 1, "current"],
+ ["future product protocol", 7, 1, "current"],
+] as const) test(`reader API compatibility accepts ${label} independently of product activation`, async () => {
+ runtime = coreConfiguration({release:"reader-release",protocolVersion:protocol,extensions:[{id:"api-key-pages",enabled:true}]});
+ const reply: Record<string,unknown> = {...inventory as Record<string,unknown>, protocolVersion:protocol};
+ if (readerApi === undefined) delete reply.readerApi;
+ else reply.readerApi = readerApi;
+ inventory=reply; readerEvidence=evidence;
+ const candidate=client();
+ expect(await candidate.nodeReaders()).toEqual(["knowledgeReview"]);
+ const prepared=await prepareMarkdown(candidate,review.markdown);prepared.doc.destroy();
+ expect(count(readerPath)).toBe(1);
+ expect(calls.some(path=>path.startsWith("/live/convert-document"))).toBe(true);
+});
+
+for (const readerApi of [2, null, "1", 0]) test(`unknown reader API ${JSON.stringify(readerApi)} refuses custom-node conversion`, async () => {
+ runtime=coreConfiguration({release:"reader-release",protocolVersion:2});
+ inventory={...inventory as object,protocolVersion:2,readerApi};readerEvidence="negative";
+ await expect(prepareMarkdown(client(),review.markdown)).rejects.toThrow("Unsupported document reader API version");
+ expect(calls.some(path=>path.startsWith("/live/"))).toBe(false);
+ expect((await cache().read())?.nodeReaders).toBeUndefined();
+});
+
+test("a nonlegacy product protocol cannot imply a reader API when the field is absent",async()=>{
+ runtime=coreConfiguration({release:"reader-release",protocolVersion:2});
+ const reply: Record<string,unknown>={...inventory as Record<string,unknown>,protocolVersion:2};delete reply.readerApi;
+ inventory=reply;readerEvidence="negative";
+ await expect(prepareMarkdown(client(),review.markdown)).rejects.toThrow("Document reader API version is missing");
+ expect(calls.some(path=>path.startsWith("/live/"))).toBe(false);
+ expect((await cache().read())?.nodeReaders).toBeUndefined();
 });
