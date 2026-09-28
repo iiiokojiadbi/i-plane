@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "coreVersion": "0.3.4",
-  "protocolVersion": 1,
+  "coreVersion": "0.4.0",
+  "protocolVersion": 2,
   "routes": {
     "GET /api/extensions/configuration/": {
       "success": {
@@ -246,6 +246,74 @@
                     "required": ["url", "sha256"],
                     "additional": false
                   }
+                },
+                "webModules": {
+                  "kind": "object",
+                  "values": {
+                    "kind": "object",
+                    "properties": {
+                      "module": {
+                        "kind": "object",
+                        "properties": {
+                          "url": {
+                            "kind": "string"
+                          },
+                          "sha256": {
+                            "kind": "string"
+                          }
+                        },
+                        "required": ["url", "sha256"],
+                        "additional": false
+                      },
+                      "kind": {
+                        "enum": ["contribution", "dialog"]
+                      },
+                      "activateOn": {
+                        "kind": "array",
+                        "items": {
+                          "kind": "object",
+                          "properties": {
+                            "surface": {
+                              "enum": [
+                                "project-section",
+                                "workspace-section",
+                                "page-list",
+                                "page-detail",
+                                "page-location",
+                                "editor"
+                              ]
+                            },
+                            "documentKind": {
+                              "enum": ["project_page", "workspace_page"]
+                            },
+                            "nested": {
+                              "kind": "boolean"
+                            }
+                          },
+                          "required": ["surface"],
+                          "additional": false
+                        }
+                      },
+                      "styles": {
+                        "kind": "array",
+                        "items": {
+                          "kind": "object",
+                          "properties": {
+                            "url": {
+                              "kind": "string"
+                            },
+                            "sha256": {
+                              "kind": "string"
+                            }
+                          },
+                          "required": ["url", "sha256"],
+                          "additional": false
+                        }
+                      }
+                    },
+                    "required": ["module", "kind", "activateOn", "styles"],
+                    "additional": false
+                  }
                 }
               },
               "required": ["id", "source", "enabled", "styles"],
@@ -314,9 +382,20 @@
               "required": ["id", "formatVersion", "nodeNames"],
               "additional": false
             }
+          },
+          "readerApi": {
+            "const": 1
           }
         },
-        "required": ["schemaVersion", "coreVersion", "protocolVersion", "release", "fingerprint", "readers"],
+        "required": [
+          "schemaVersion",
+          "coreVersion",
+          "protocolVersion",
+          "release",
+          "fingerprint",
+          "readers",
+          "readerApi"
+        ],
         "additional": false
       },
       "unavailable": {
@@ -747,9 +826,20 @@
               "required": ["id", "formatVersion", "nodeNames"],
               "additional": false
             }
+          },
+          "readerApi": {
+            "const": 1
           }
         },
-        "required": ["schemaVersion", "coreVersion", "protocolVersion", "release", "fingerprint", "readers"],
+        "required": [
+          "schemaVersion",
+          "coreVersion",
+          "protocolVersion",
+          "release",
+          "fingerprint",
+          "readers",
+          "readerApi"
+        ],
         "additional": false
       },
       "unavailable": {
@@ -831,5 +921,6 @@
         }
       }
     }
-  }
+  },
+  "readerApi": 1
 }

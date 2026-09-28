@@ -24,7 +24,7 @@ beforeEach(async()=>{
  config={url:{value:"https://plane.test",origin:"flag"},token:{value:"reader-test-key",origin:"flag"},workspace:{value:"test",origin:"flag"},configPath:"/dev/null"};
  calls=[];runtimeStatus=200;readerStatus=200;runtimeEvidence="current";readerEvidence="current";
  runtime=coreConfiguration({release:"reader-release",extensions:[{id:"api-key-pages",enabled:true}]});
- inventory={schemaVersion:1,readerApi:1,coreVersion:"0.3.4",protocolVersion:1,release:"reader-release",fingerprint:"a".repeat(64),readers:[{id:"knowledge-review",formatVersion:1,nodeNames:["knowledgeReview"]}]};
+ inventory={schemaVersion:1,readerApi:1,coreVersion:runtime.coreVersion,protocolVersion:runtime.protocolVersion,release:"reader-release",fingerprint:"a".repeat(64),readers:[{id:"knowledge-review",formatVersion:1,nodeNames:["knowledgeReview"]}]};
  oldProxy=process.env.NO_PROXY;process.env.NO_PROXY="*";
  globalThis.fetch=(async(input,init)=>{
   const path=new URL(String(input)).pathname;calls.push(path);
@@ -128,8 +128,9 @@ for (const [label, protocol, readerApi, evidence] of [
  ["product protocol 2", 2, 1, "current"],
  ["future product protocol", 7, 1, "current"],
 ] as const) test(`reader API compatibility accepts ${label} independently of product activation`, async () => {
- runtime = coreConfiguration({release:"reader-release",protocolVersion:protocol,extensions:[{id:"api-key-pages",enabled:true}]});
- const reply: Record<string,unknown> = {...inventory as Record<string,unknown>, protocolVersion:protocol};
+ runtime = coreConfiguration({release:"reader-release",protocolVersion:protocol,extensions:[{id:"api-key-pages",enabled:true}],...(evidence==="historical"?{coreVersion:"0.3.4"}:{})});
+ runtimeEvidence=evidence;
+ const reply: Record<string,unknown> = {...inventory as Record<string,unknown>, coreVersion:runtime.coreVersion, protocolVersion:protocol};
  if (readerApi === undefined) delete reply.readerApi;
  else reply.readerApi = readerApi;
  inventory=reply; readerEvidence=evidence;
