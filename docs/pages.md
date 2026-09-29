@@ -209,6 +209,12 @@ current core, runtime release and reader fingerprint. Results share the existing
 per-instance capability cache and `--refresh-pages`. Every custom-node write
 rechecks the runtime identity, so a rollback cannot reuse a previous positive claim.
 
+The reader response uses its own API version: `readerApi: 1`. Product activation
+protocol versions do not change that vocabulary; protocol 2 with reader API 1 is
+supported. For older cores without `readerApi`, the CLI requires protocol 1.
+An unknown reader API version produces an explicit refusal before conversion or
+document changes. The reader inventory and runtime identity must still agree.
+
 An absent endpoint means refusal with exit code **1**, before conversion, page
 creation or document changes. `401`/`403` remain access errors; malformed inventory,
 service errors and disagreement between runtimes do not mean an absent feature.

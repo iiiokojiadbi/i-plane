@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { coreConfiguration, coreReply, coreBody } from "./helpers/core-http.ts";
-import schema from "./fixtures/core/http-0.3.4.json";
+import schema from "./fixtures/core/http-0.4.0.json";
 
 test("current HTTP fixtures conform to the locally versioned core shape", () => {
   const configuration = coreConfiguration();
@@ -8,7 +8,7 @@ test("current HTTP fixtures conform to the locally versioned core shape", () => 
   expect(coreReply("/api/extensions/configuration/", configuration).status).toBe(200);
   expect(() => coreReply("/api/extensions/configuration/", { release: "partial" })).toThrow("required response field");
   expect(() => coreReply("/api/extensions/node-readers/", {
-    schemaVersion: 1, coreVersion: "0.3.4", protocolVersion: 1, release: "fixture",
+    schemaVersion: 1, readerApi: 1, coreVersion: "0.3.4", protocolVersion: 1, release: "fixture",
     fingerprint: "a".repeat(64), readers: [{ id: "probe", formatVersion: 1, nodeNames: ["probeNode"] }],
   })).not.toThrow();
 });

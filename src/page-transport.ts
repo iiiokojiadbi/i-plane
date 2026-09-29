@@ -117,6 +117,21 @@ export class AutoPageClient implements PageClient {
         missing = true;
       }
       if (!missing) {
+        if (value && typeof value === "object" && "readerApi" in value) {
+          if (value.readerApi !== 1)
+            throw new PlaneError(
+              "Unsupported document reader API version; update i-plane before editing custom nodes.",
+            );
+        } else if (
+          value &&
+          typeof value === "object" &&
+          "protocolVersion" in value &&
+          value.protocolVersion !== 1
+        ) {
+          throw new PlaneError(
+            "Document reader API version is missing; only legacy product protocol 1 is supported without readerApi.",
+          );
+        }
         if (
           !value ||
           typeof value !== "object" ||
@@ -126,7 +141,7 @@ export class AutoPageClient implements PageClient {
           typeof value.coreVersion !== "string" ||
           value.coreVersion !== runtime.coreVersion ||
           !("protocolVersion" in value) ||
-          value.protocolVersion !== 1 ||
+          !Number.isInteger(value.protocolVersion) ||
           value.protocolVersion !== runtime.protocolVersion ||
           !("release" in value) ||
           value.release !== runtime.release ||
