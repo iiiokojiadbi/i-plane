@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "coreVersion": "0.4.0",
+  "coreVersion": "0.4.1",
   "protocolVersion": 2,
   "routes": {
     "GET /api/extensions/configuration/": {
@@ -28,7 +28,10 @@
                     "kind": "string"
                   }
                 },
-                "required": ["bridgeVersion", "fingerprint"],
+                "required": [
+                  "bridgeVersion",
+                  "fingerprint"
+                ],
                 "additional": false
               },
               {
@@ -215,7 +218,10 @@
                       "kind": "string"
                     }
                   },
-                  "required": ["url", "sha256"],
+                  "required": [
+                    "url",
+                    "sha256"
+                  ],
                   "additional": false
                 },
                 "editor": {
@@ -228,7 +234,10 @@
                       "kind": "string"
                     }
                   },
-                  "required": ["url", "sha256"],
+                  "required": [
+                    "url",
+                    "sha256"
+                  ],
                   "additional": false
                 },
                 "styles": {
@@ -243,7 +252,10 @@
                         "kind": "string"
                       }
                     },
-                    "required": ["url", "sha256"],
+                    "required": [
+                      "url",
+                      "sha256"
+                    ],
                     "additional": false
                   }
                 },
@@ -262,11 +274,17 @@
                             "kind": "string"
                           }
                         },
-                        "required": ["url", "sha256"],
+                        "required": [
+                          "url",
+                          "sha256"
+                        ],
                         "additional": false
                       },
                       "kind": {
-                        "enum": ["contribution", "dialog"]
+                        "enum": [
+                          "contribution",
+                          "dialog"
+                        ]
                       },
                       "activateOn": {
                         "kind": "array",
@@ -284,13 +302,18 @@
                               ]
                             },
                             "documentKind": {
-                              "enum": ["project_page", "workspace_page"]
+                              "enum": [
+                                "project_page",
+                                "workspace_page"
+                              ]
                             },
                             "nested": {
                               "kind": "boolean"
                             }
                           },
-                          "required": ["surface"],
+                          "required": [
+                            "surface"
+                          ],
                           "additional": false
                         }
                       },
@@ -306,17 +329,171 @@
                               "kind": "string"
                             }
                           },
-                          "required": ["url", "sha256"],
+                          "required": [
+                            "url",
+                            "sha256"
+                          ],
                           "additional": false
                         }
                       }
                     },
-                    "required": ["module", "kind", "activateOn", "styles"],
+                    "required": [
+                      "module",
+                      "kind",
+                      "activateOn",
+                      "styles"
+                    ],
                     "additional": false
                   }
+                },
+                "edition": {
+                  "kind": "object",
+                  "properties": {
+                    "labels": {
+                      "kind": "object",
+                      "properties": {
+                        "en": {
+                          "kind": "string"
+                        },
+                        "ru": {
+                          "kind": "string"
+                        }
+                      },
+                      "required": [
+                        "en",
+                        "ru"
+                      ],
+                      "additional": false
+                    },
+                    "dialog": {
+                      "kind": "string"
+                    }
+                  },
+                  "required": [
+                    "labels",
+                    "dialog"
+                  ],
+                  "additional": false
                 }
               },
-              "required": ["id", "source", "enabled", "styles"],
+              "required": [
+                "id",
+                "source",
+                "enabled",
+                "styles"
+              ],
+              "additional": false
+            }
+          },
+          "products": {
+            "kind": "array",
+            "items": {
+              "kind": "object",
+              "properties": {
+                "id": {
+                  "kind": "string"
+                },
+                "card": {
+                  "kind": "object",
+                  "properties": {
+                    "labels": {
+                      "kind": "object",
+                      "properties": {
+                        "en": {
+                          "kind": "string"
+                        },
+                        "ru": {
+                          "kind": "string"
+                        }
+                      },
+                      "required": [
+                        "en",
+                        "ru"
+                      ],
+                      "additional": false
+                    },
+                    "descriptions": {
+                      "kind": "object",
+                      "properties": {
+                        "en": {
+                          "kind": "string"
+                        },
+                        "ru": {
+                          "kind": "string"
+                        }
+                      },
+                      "required": [
+                        "en",
+                        "ru"
+                      ],
+                      "additional": false
+                    },
+                    "icon": {
+                      "enum": [
+                        "check-circle",
+                        "page",
+                        "views",
+                        "module",
+                        "cycle",
+                        "project",
+                        "analytics"
+                      ]
+                    },
+                    "primaryFeature": {
+                      "kind": "string"
+                    },
+                    "section": {
+                      "kind": "object",
+                      "properties": {
+                        "scope": {
+                          "enum": [
+                            "workspace",
+                            "project"
+                          ]
+                        },
+                        "key": {
+                          "kind": "string"
+                        }
+                      },
+                      "required": [
+                        "scope",
+                        "key"
+                      ],
+                      "additional": false
+                    },
+                    "productUrl": {
+                      "kind": "string"
+                    },
+                    "comingSoon": {
+                      "kind": "boolean"
+                    },
+                    "sortOrder": {
+                      "kind": "number"
+                    }
+                  },
+                  "required": [
+                    "labels",
+                    "descriptions",
+                    "icon",
+                    "primaryFeature",
+                    "sortOrder"
+                  ],
+                  "additional": false
+                },
+                "status": {
+                  "enum": [
+                    "installed",
+                    "disabled",
+                    "view",
+                    "soon"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "card",
+                "status"
+              ],
               "additional": false
             }
           }
@@ -379,7 +556,11 @@
                   }
                 }
               },
-              "required": ["id", "formatVersion", "nodeNames"],
+              "required": [
+                "id",
+                "formatVersion",
+                "nodeNames"
+              ],
               "additional": false
             }
           },
@@ -407,7 +588,9 @@
               "kind": "string"
             }
           },
-          "required": ["error"],
+          "required": [
+            "error"
+          ],
           "additional": false
         }
       },
@@ -467,12 +650,25 @@
                   ]
                 }
               },
-              "required": ["point", "key", "source", "extension", "enabled", "backendRegistered"],
+              "required": [
+                "point",
+                "key",
+                "source",
+                "extension",
+                "enabled",
+                "backendRegistered"
+              ],
               "additional": false
             }
           }
         },
-        "required": ["apiVersion", "coreVersion", "protocolVersion", "release", "keys"],
+        "required": [
+          "apiVersion",
+          "coreVersion",
+          "protocolVersion",
+          "release",
+          "keys"
+        ],
         "additional": false
       },
       "cacheControl": "no-store"
@@ -491,7 +687,10 @@
                 "kind": "string"
               }
             },
-            "required": ["id", "name"],
+            "required": [
+              "id",
+              "name"
+            ],
             "additional": false
           },
           "workspaceId": {
@@ -501,7 +700,11 @@
             "kind": "integer"
           }
         },
-        "required": ["user", "workspaceId", "role"],
+        "required": [
+          "user",
+          "workspaceId",
+          "role"
+        ],
         "additional": false
       },
       "authorization": "service credential and active workspace identity"
@@ -520,7 +723,10 @@
             "kind": "string"
           },
           "documentKind": {
-            "enum": ["project_page", "workspace_page"]
+            "enum": [
+              "project_page",
+              "workspace_page"
+            ]
           },
           "projectId": {
             "variants": [
@@ -595,7 +801,13 @@
                       "const": "available"
                     },
                     "entityKind": {
-                      "enum": ["page", "issue", "project", "cycle", "module"]
+                      "enum": [
+                        "page",
+                        "issue",
+                        "project",
+                        "cycle",
+                        "module"
+                      ]
                     },
                     "entityId": {
                       "kind": "string"
@@ -622,7 +834,10 @@
                           "kind": "string"
                         }
                       },
-                      "required": ["kind", "projectId"],
+                      "required": [
+                        "kind",
+                        "projectId"
+                      ],
                       "additional": false
                     }
                   },
@@ -644,7 +859,9 @@
                       "const": "unavailable"
                     }
                   },
-                  "required": ["status"],
+                  "required": [
+                    "status"
+                  ],
                   "additional": false
                 }
               ]
@@ -654,7 +871,10 @@
             "kind": "string"
           }
         },
-        "required": ["references", "unavailableLabel"],
+        "required": [
+          "references",
+          "unavailableLabel"
+        ],
         "additional": false
       },
       "authorization": "active workspace identity"
@@ -672,7 +892,13 @@
                   "const": "available"
                 },
                 "entityKind": {
-                  "enum": ["page", "issue", "project", "cycle", "module"]
+                  "enum": [
+                    "page",
+                    "issue",
+                    "project",
+                    "cycle",
+                    "module"
+                  ]
                 },
                 "entityId": {
                   "kind": "string"
@@ -699,7 +925,10 @@
                       "kind": "string"
                     }
                   },
-                  "required": ["kind", "projectId"],
+                  "required": [
+                    "kind",
+                    "projectId"
+                  ],
                   "additional": false
                 }
               },
@@ -716,7 +945,9 @@
             }
           }
         },
-        "required": ["references"],
+        "required": [
+          "references"
+        ],
         "additional": false
       },
       "authorization": "active workspace identity"
@@ -732,7 +963,9 @@
             }
           }
         },
-        "required": ["sections"],
+        "required": [
+          "sections"
+        ],
         "additional": false
       },
       "authorization": "native project section permissions"
@@ -748,7 +981,9 @@
             }
           }
         },
-        "required": ["sections"],
+        "required": [
+          "sections"
+        ],
         "additional": false
       },
       "authorization": "native project section permissions"
@@ -761,7 +996,9 @@
             "const": true
           }
         },
-        "required": ["allowed"],
+        "required": [
+          "allowed"
+        ],
         "additional": false
       },
       "authorization": "active membership and enabled section"
@@ -774,7 +1011,9 @@
             "const": true
           }
         },
-        "required": ["allowed"],
+        "required": [
+          "allowed"
+        ],
         "additional": false
       },
       "authorization": "active membership and enabled section"
@@ -823,7 +1062,11 @@
                   }
                 }
               },
-              "required": ["id", "formatVersion", "nodeNames"],
+              "required": [
+                "id",
+                "formatVersion",
+                "nodeNames"
+              ],
               "additional": false
             }
           },
@@ -851,7 +1094,9 @@
               "kind": "string"
             }
           },
-          "required": ["error"],
+          "required": [
+            "error"
+          ],
           "additional": false
         }
       },
@@ -872,7 +1117,11 @@
             "kind": "string"
           }
         },
-        "required": ["description_html", "description_json", "description_binary"],
+        "required": [
+          "description_html",
+          "description_json",
+          "description_binary"
+        ],
         "additional": false
       },
       "errors": {
@@ -897,16 +1146,24 @@
                         "kind": "string"
                       }
                     },
-                    "required": ["path", "message"],
+                    "required": [
+                      "path",
+                      "message"
+                    ],
                     "additional": false
                   }
                 }
               },
-              "required": ["validationErrors"],
+              "required": [
+                "validationErrors"
+              ],
               "additional": false
             }
           },
-          "required": ["message", "context"],
+          "required": [
+            "message",
+            "context"
+          ],
           "additional": false
         },
         "500": {
@@ -916,7 +1173,9 @@
               "const": "Internal server error."
             }
           },
-          "required": ["message"],
+          "required": [
+            "message"
+          ],
           "additional": false
         }
       }
@@ -942,7 +1201,10 @@
                       "kind": "string"
                     },
                     "documentKind": {
-                      "enum": ["project_page", "workspace_page"]
+                      "enum": [
+                        "project_page",
+                        "workspace_page"
+                      ]
                     },
                     "projectId": {
                       "variants": [
@@ -1006,14 +1268,18 @@
                       "const": "unavailable"
                     }
                   },
-                  "required": ["status"],
+                  "required": [
+                    "status"
+                  ],
                   "additional": false
                 }
               ]
             }
           }
         },
-        "required": ["references"],
+        "required": [
+          "references"
+        ],
         "additional": false
       },
       "deniedStatus": 404,
