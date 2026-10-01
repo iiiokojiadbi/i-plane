@@ -920,6 +920,104 @@
           "additional": false
         }
       }
+    },
+    "POST /api/extensions/workspaces/<slug>/page-references/": {
+      "success": {
+        "kind": "object",
+        "properties": {
+          "references": {
+            "kind": "array",
+            "items": {
+              "variants": [
+                {
+                  "kind": "object",
+                  "properties": {
+                    "status": {
+                      "const": "available"
+                    },
+                    "pageId": {
+                      "kind": "string"
+                    },
+                    "workspaceSlug": {
+                      "kind": "string"
+                    },
+                    "documentKind": {
+                      "enum": ["project_page", "workspace_page"]
+                    },
+                    "projectId": {
+                      "variants": [
+                        {
+                          "kind": "string"
+                        },
+                        {
+                          "kind": "null"
+                        }
+                      ]
+                    },
+                    "href": {
+                      "kind": "string"
+                    },
+                    "label": {
+                      "kind": "string"
+                    },
+                    "ownerId": {
+                      "kind": "string"
+                    },
+                    "projectIdentifier": {
+                      "variants": [
+                        {
+                          "kind": "string"
+                        },
+                        {
+                          "kind": "null"
+                        }
+                      ]
+                    },
+                    "logoProps": {
+                      "variants": [
+                        {
+                          "kind": "object",
+                          "additional": true
+                        },
+                        {
+                          "kind": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "pageId",
+                    "workspaceSlug",
+                    "documentKind",
+                    "projectId",
+                    "href",
+                    "label",
+                    "ownerId",
+                    "projectIdentifier",
+                    "logoProps"
+                  ],
+                  "additional": false
+                },
+                {
+                  "kind": "object",
+                  "properties": {
+                    "status": {
+                      "const": "unavailable"
+                    }
+                  },
+                  "required": ["status"],
+                  "additional": false
+                }
+              ]
+            }
+          }
+        },
+        "required": ["references"],
+        "additional": false
+      },
+      "deniedStatus": 404,
+      "cacheControl": "no-store"
     }
   },
   "readerApi": 1
