@@ -1,5 +1,5 @@
 /** Versioned server fixtures. The CLI checkout never reads a sibling repository. */
-import schema from "../fixtures/core/http-0.4.0.json";
+import schema from "../fixtures/core/http-0.4.1.json";
 import { checkShape } from "./core-http-shape.mjs";
 const configurationRoute = "GET /api/extensions/configuration/";
 export function coreConfiguration(overrides: Record<string, unknown> = {}) {
