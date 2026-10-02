@@ -184,10 +184,14 @@ try {
     );
   }
 }
-if (published !== "") {
+if (published !== "" && shouldPublish) {
   throw new Error(`${reference} is already in the registry; bump the version first`);
 }
-console.log(`\n${reference} is not in the registry yet`);
+console.log(
+  published === ""
+    ? `\n${reference} is not in the registry yet`
+    : `\n${reference} is already in the registry; verified locally without publication`,
+);
 
 if (!shouldPublish) {
   console.log("\ndry run: nothing was published. Pass --publish to upload exactly this.");
