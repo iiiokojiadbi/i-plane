@@ -4,10 +4,9 @@ import { spawnSync } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const cli = resolve(import.meta.dirname, "..");
-const core = resolve(fileURLToPath(import.meta.resolve("for-plane/sdk/protocol.mts")), "../..");
+const core = join(cli, ".artifacts/core");
 const installedVersion = process.env.FOR_PLANE_ACCEPT_CORE_VERSION;
 assert(installedVersion, "Run through npm run accept to verify the installed core receipt");
 const contract = JSON.parse(await readFile(join(core, "checks/core-http.json"), "utf8"));
