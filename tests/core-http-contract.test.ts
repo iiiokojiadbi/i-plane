@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { coreConfiguration, coreReply, coreBody } from "./helpers/core-http.ts";
-import schema from "./fixtures/core/http-0.4.1.json";
+import schema from "./fixtures/core/http-0.4.2.json";
 
 test("current HTTP fixtures conform to the locally versioned core shape", () => {
   const configuration = coreConfiguration();

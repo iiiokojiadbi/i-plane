@@ -109,6 +109,20 @@ TypeScript checks `src` and `types`; tests run under Bun. Do not add `bun-types`
 to the project's TypeScript compilation just to include tests: its declarations
 can conflict with `@types/node`. Exercise the built Node entry point too.
 
+## Core compatibility acceptance
+
+`checks/registry.json` owns the copied core HTTP contract and CLI response suites.
+Load the pinned tools archive with `node scripts/install-accept-tools.mjs
+/path/to/artifacts`, then `npm ci`. `npm run accept` runs only this registry and
+requires a green receipt for the installed core. The copied schema must match
+that version; diagnostics name the changed field and core version. Before review,
+run ordinary acceptance and `npm run accept -- --affected`.
+
+The core composition includes this registry through `acceptanceSources`, without
+adding CLI files to the runtime package. A full kit checks it before rehearsal.
+The tools archive and `.build/` reports are local artifacts; commit their pin and
+dependency lockfile. Acceptance-only changes do not require publishing the CLI.
+
 ## Live checks
 
 The CLI reads `~/.config/plane/credentials` itself. Keep secrets out of command
@@ -214,4 +228,5 @@ public in the core surface inventory. Internal imports fail the core gate.
 CLI response fixtures stay self-contained: keep a versioned copy of the accepted
 core HTTP shapes in i-plane. Its tests validate current positive responses;
 historical and intentionally invalid responses carry explicit evidence labels.
-The common for-plane acceptance run verifies that copy against the core contract.
+The i-plane acceptance registry verifies that copy against the verified installed
+core version. The explicit full kit includes this registry before rehearsal.

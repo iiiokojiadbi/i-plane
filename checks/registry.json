@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "project": "i-plane",
+  "acceptance": {
+    "source": {
+      "id": "i-plane",
+      "kind": "product",
+      "version": "2.1.1"
+    },
+    "compatibleCore": ">=0.4.1 <0.5.0",
+    "protocolVersion": 2,
+    "runtime": false
+  },
+  "scopes": {
+    "core-contract": "CLI fixtures and published core HTTP compatibility"
+  },
+  "fixtures": [],
+  "resources": [],
+  "checks": [
+    {
+      "id": "core-cli-wire",
+      "title": "Versioned CLI HTTP fixture compatibility",
+      "proves": "The standalone CLI carries the exact versioned core response schema and its positive HTTP/conversion fixtures conform to it.",
+      "scope": [
+        "core-contract"
+      ],
+      "tier": "source",
+      "needs": [],
+      "run": {
+        "kind": "node",
+        "script": "scripts/check-core-cli-contract.mjs",
+        "args": []
+      },
+      "expect": 20,
+      "task": "PLX-56",
+      "inputs": {
+        "files": [
+          "package*.json",
+          "bun.lock",
+          "accept-tools.json",
+          "scripts/check-core-cli-contract.mjs",
+          "checks/**",
+          "tests/**",
+          "src/**",
+          "@core/checks/core-http.json",
+          "@core/scripts/contracts/**"
+        ],
+        "plane": false,
+        "installed": false
+      }
+    },
+    {
+      "id": "core-cli-wire-mutation",
+      "title": "Versioned CLI HTTP fixture compatibility",
+      "proves": "Renaming a published reader fingerprint field rejects the unchanged CLI contract copy on the declared assertion.",
+      "scope": [
+        "core-contract"
+      ],
+      "tier": "source",
+      "needs": [],
+      "run": {
+        "kind": "node",
+        "script": "scripts/check-core-cli-contract.mjs",
+        "args": [
+          "mutation"
+        ]
+      },
+      "expect": 20,
+      "task": "PLX-56",
+      "failing": {
+        "assertion": "CLI response fixture differs from the published core HTTP contract"
+      },
+      "inputs": {
+        "files": [
+          "package*.json",
+          "bun.lock",
+          "accept-tools.json",
+          "scripts/check-core-cli-contract.mjs",
+          "checks/**",
+          "tests/**",
+          "src/**",
+          "@core/checks/core-http.json",
+          "@core/scripts/contracts/**"
+        ],
+        "plane": false,
+        "installed": false
+      }
+    },
+    {
+      "id": "unit-cli",
+      "title": "Standalone CLI regression suite",
+      "proves": "The CLI command registry, requests, output, errors and page conversion regressions pass in the consumer repository.",
+      "scope": [
+        "core-contract"
+      ],
+      "tier": "source",
+      "needs": [],
+      "run": {
+        "kind": "command",
+        "command": [
+          "bun",
+          "test"
+        ]
+      },
+      "expect": 45,
+      "task": "PLX-63",
+      "inputs": {
+        "files": [
+          "**",
+          ".*"
+        ],
+        "plane": false,
+        "installed": false
+      }
+    },
+    {
+      "id": "core-public-imports",
+      "title": "CLI public core import boundary",
+      "proves": "Every imported contract used by this product belongs to the accepted published inventory.",
+      "scope": [
+        "core-contract"
+      ],
+      "tier": "source",
+      "needs": [],
+      "run": {
+        "kind": "command",
+        "command": [
+          "node",
+          "{core}/scripts/check-core-surface.mjs",
+          "imports",
+          "{root}"
+        ]
+      },
+      "expect": 15,
+      "inputs": {
+        "files": [
+          "**",
+          "@core/checks/**",
+          "@core/scripts/contracts/**",
+          "@core/scripts/check-core-surface.mjs",
+          "@core/sdk/**",
+          "accept-tools.json"
+        ],
+        "plane": false,
+        "installed": false
+      },
+      "task": "PLX-63"
+    }
+  ]
+}
