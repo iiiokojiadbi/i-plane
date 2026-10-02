@@ -112,8 +112,10 @@ can conflict with `@types/node`. Exercise the built Node entry point too.
 ## Core compatibility acceptance
 
 `checks/registry.json` owns the copied core HTTP contract and CLI response suites.
-Load the pinned tools archive with `node scripts/install-accept-tools.mjs
-/path/to/artifacts`, then `npm ci`. `npm run accept` runs only this registry and
+Ordinary `npm ci` and the checks above need no core archives. Install optional
+acceptance tools with `npm run accept:install -- /path/to/artifacts`; their
+dependencies stay inside `.artifacts/core`, outside the CLI dependency graph.
+The CLI does not import native UI declarations and needs no native archive. `npm run accept` runs only this registry and
 requires a green receipt for the installed core. The copied schema must match
 that version; diagnostics name the changed field and core version. Before review,
 run ordinary acceptance and `npm run accept -- --affected`.

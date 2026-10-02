@@ -3,11 +3,6 @@
   "coreVersion": "0.4.2",
   "tools": {
     "archive": "for-plane-tools-0.4.2.tar.gz",
-    "sha256": "df43d81a48f3f2ab842171d257eb803a35338f7269a2a3cc853366dc29fb1400"
-  },
-  "native": {
-    "archive": "for-plane-native-types-33673cf1efc3a1a4e6124180955b3cff6f0dd6783d77b35a92297c12384b6e5f.tgz",
-    "sha256": "7b0437475c59241656d02fcfe15facd2b0b2e8811ea551dab9b4a652eaa22357",
-    "fingerprint": "33673cf1efc3a1a4e6124180955b3cff6f0dd6783d77b35a92297c12384b6e5f"
+    "sha256": "e00a3386749b3ace702b2fd68707ebf35ac842848ca445bd267e194107eb1734"
   }
 }

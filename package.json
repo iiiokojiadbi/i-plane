@@ -28,7 +28,7 @@
     "format": "biome format --write .",
     "release": "node scripts/release.mjs",
     "test": "bun test",
-    "accept": "node node_modules/for-plane/scripts/accept/main.mts",
+    "accept": "node scripts/accept.mjs",
     "accept:install": "node scripts/install-accept-tools.mjs"
   },
   "devDependencies": {
@@ -37,9 +37,7 @@
     "@types/node": "24.13.4",
     "@types/turndown": "5.0.6",
     "@types/ws": "8.18.1",
-    "typescript": "7.0.2",
-    "for-plane": "file:.artifacts/core",
-    "@for-plane/native-types": "file:.artifacts/native/for-plane-native-types-33673cf1efc3a1a4e6124180955b3cff6f0dd6783d77b35a92297c12384b6e5f.tgz"
+    "typescript": "7.0.2"
   },
   "optionalDependencies": {
     "undici": "8.10.2"

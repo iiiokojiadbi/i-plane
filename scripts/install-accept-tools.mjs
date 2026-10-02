@@ -1,4 +1,4 @@
-/** Bootstrap a pinned local tools archive before dependency installation. */
+/** Install pinned CLI acceptance tools independently of the CLI dependencies. */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -59,6 +59,10 @@ try {
       }) + "\n",
     );
   }
+  execFileSync("npm", ["ci", "--prefix", join(target, "core"), "--no-audit", "--no-fund"], {
+    stdio: "inherit",
+    timeout: 120_000,
+  });
   console.log(`Installed acceptance tools for core ${pin.coreVersion}`);
 } finally {
   await rm(staging, { recursive: true, force: true });
