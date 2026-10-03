@@ -7,7 +7,7 @@
   "author": "iiiokojiadbi <iiiokojiadbi@yandex.ru>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iiiokojiadbi/i-plane.git"
+    "url": "git+https://github.com/praline-labs/i-plane.git"
   },
   "bin": {
     "i-plane": "./dist/cli.js"
@@ -69,8 +69,8 @@
     "knowledge-base",
     "collaborative-editing"
   ],
-  "homepage": "https://github.com/iiiokojiadbi/i-plane#readme",
+  "homepage": "https://github.com/praline-labs/i-plane#readme",
   "bugs": {
-    "url": "https://github.com/iiiokojiadbi/i-plane/issues"
+    "url": "https://github.com/praline-labs/i-plane/issues"
   }
 }
